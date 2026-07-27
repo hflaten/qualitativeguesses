@@ -10,7 +10,7 @@ from qualstocks.ingestion import (
     IngestionService,
     SourceEventStatus,
 )
-from qualstocks.sources import WebhookAdapter
+from qualstocks.sources import DEFAULT_SOURCE_REGISTRY, WebhookAdapter
 
 
 class SingleEventAdapter(WebhookAdapter):
@@ -73,6 +73,27 @@ class IngestionTest(unittest.TestCase):
 
         self.assertIsNotNone(result.ingested_event.source_latency_seconds)
         self.assertGreaterEqual(result.ingested_event.source_latency_seconds, 0)
+
+    def test_analysis_job_preserves_source_id(self):
+        source_definition = DEFAULT_SOURCE_REGISTRY.require("ukmto")
+        repository = InMemoryEventRepository()
+        queue = InMemoryAnalysisQueue()
+        service = IngestionService(repository=repository, analysis_queue=queue)
+        adapter = WebhookAdapter(
+            source_definition.name,
+            source_definition.source_class,
+            source_definition=source_definition,
+        )
+        event = adapter._record_event(
+            title="UKMTO warning near Strait of Hormuz",
+            url="https://example.invalid/ukmto",
+            payload={"severity": "high"},
+        )
+
+        result = asyncio.run(service.ingest(event))
+
+        self.assertIsNotNone(result.analysis_job)
+        self.assertEqual(result.analysis_job.source_id, "ukmto")
 
 
 if __name__ == "__main__":

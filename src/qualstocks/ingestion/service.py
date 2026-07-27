@@ -32,6 +32,7 @@ class AnalysisJob:
     idempotency_key: str
     source: str
     source_class: SourceClass
+    source_id: str | None = None
     queued_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -119,6 +120,7 @@ class InMemoryAnalysisQueue:
             idempotency_key=ingested_event.idempotency_key,
             source=ingested_event.event.source,
             source_class=ingested_event.event.source_class,
+            source_id=ingested_event.event.source_id,
         )
         self.jobs.append(job)
         return job
