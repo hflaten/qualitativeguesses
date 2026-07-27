@@ -204,7 +204,7 @@ DEFAULT_SOURCE_DEFINITIONS: tuple[SourceDefinition, ...] = (
         licensing_class=LicensingClass.PUBLIC_WITH_TERMS,
         language="fa",
         translation_required=True,
-        url="https://www.tasnimnews.com/fa/rss",
+        url="https://www.tasnimnews.ir/fa/rss",
     ),
     SourceDefinition(
         source_id="mehr",
