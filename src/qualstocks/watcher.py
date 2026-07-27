@@ -16,10 +16,10 @@ def main() -> None:
         },
         flush=True,
     )
+    print("watcher-service waiting for enabled source adapters", flush=True)
     while True:
         time.sleep(30)
 
 
 if __name__ == "__main__":
     main()
-

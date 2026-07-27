@@ -15,10 +15,10 @@ def main() -> None:
         },
         flush=True,
     )
+    print("worker-service waiting for durable analysis queue backend", flush=True)
     while True:
         time.sleep(30)
 
 
 if __name__ == "__main__":
     main()
-

@@ -74,6 +74,7 @@ The initial schema creates durable tables for:
 - hypotheses
 - paper orders and fills
 - paper positions
+- analysis jobs
 - source health
 - audit log
 
