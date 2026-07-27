@@ -23,6 +23,8 @@ V1 is paper trading only. Live trading must remain disabled unless a future expl
 - `watcher-service`: source listeners and fallback poll adapters
 - `worker-service`: AI analysis, hypothesis state machine, paper trades, exit timers
 
+Railway service setup is documented in `docs/railway-services.md`.
+
 ## Local Setup
 
 Install Python 3.12, then:
