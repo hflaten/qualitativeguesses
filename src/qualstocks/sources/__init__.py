@@ -58,6 +58,16 @@ from qualstocks.sources.polymarket import (
     PolymarketMarket,
     PolymarketSignalConfig,
 )
+from qualstocks.sources.kalshi import (
+    KalshiAdapter,
+    KalshiAuthSigner,
+    KalshiCredentials,
+    KalshiEnvironment,
+    KalshiEventNormalizer,
+    KalshiEventType,
+    KalshiMarket,
+    KalshiSignalConfig,
+)
 
 __all__ = [
     "AdapterHealth",
@@ -75,6 +85,14 @@ __all__ = [
     "HttpxTextFetchClient",
     "IRAN_SIGNAL_KEYWORDS",
     "IranSourceAccessNote",
+    "KalshiAdapter",
+    "KalshiAuthSigner",
+    "KalshiCredentials",
+    "KalshiEnvironment",
+    "KalshiEventNormalizer",
+    "KalshiEventType",
+    "KalshiMarket",
+    "KalshiSignalConfig",
     "KeywordFilter",
     "OFFICIAL_US_KEYWORDS",
     "PolymarketAdapter",

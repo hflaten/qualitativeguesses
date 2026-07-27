@@ -49,6 +49,9 @@ class Settings:
     supabase_db_url: str
     railway_token: str
     railway_api_token: str
+    kalshi_env: str
+    kalshi_api_key_id: str
+    kalshi_private_key_pem: str
     source_official_us_rss_enabled: bool
     source_official_iran_rss_enabled: bool
     source_fixture_mode_enabled: bool
@@ -80,6 +83,9 @@ class Settings:
             "source_official_iran_rss_enabled": self.source_official_iran_rss_enabled,
             "source_fixture_mode_enabled": self.source_fixture_mode_enabled,
             "source_persistence_backend": self.source_persistence_backend,
+            "kalshi_configured": bool(
+                self.kalshi_api_key_id and self.kalshi_private_key_pem
+            ),
         }
 
 
@@ -103,6 +109,9 @@ def load_settings() -> Settings:
         supabase_db_url=_env("SUPABASE_DB_URL"),
         railway_token=_env("RAILWAY_TOKEN"),
         railway_api_token=_env("RAILWAY_API_TOKEN"),
+        kalshi_env=_env("KALSHI_ENV", "demo"),
+        kalshi_api_key_id=_env("KALSHI_API_KEY_ID"),
+        kalshi_private_key_pem=_env("KALSHI_PRIVATE_KEY_PEM"),
         source_official_us_rss_enabled=_env_bool("SOURCE_OFFICIAL_US_RSS_ENABLED", False),
         source_official_iran_rss_enabled=_env_bool("SOURCE_OFFICIAL_IRAN_RSS_ENABLED", False),
         source_fixture_mode_enabled=_env_bool("SOURCE_FIXTURE_MODE_ENABLED", False),
