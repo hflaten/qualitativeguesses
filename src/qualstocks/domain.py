@@ -31,6 +31,46 @@ class SourceClass(StrEnum):
     MARKET_CONTROL = "market_control"
 
 
+class SourceTier(StrEnum):
+    TRIGGER = "trigger"
+    CONFIRMATION = "confirmation"
+    CONTROL = "control"
+
+
+class SourceCategory(StrEnum):
+    PREDICTION_MARKET = "prediction_market"
+    OFFICIAL_US = "official_us"
+    OFFICIAL_IRAN = "official_iran"
+    NORWEGIAN_MARKET = "norwegian_market"
+    NORWEGIAN_PRESS = "norwegian_press"
+    WIRE_OR_NEWSPAPER = "wire_or_newspaper"
+    MARITIME_SECURITY = "maritime_security"
+    AIS_TANKER_FLOW = "ais_tanker_flow"
+    ENERGY_MARKET = "energy_market"
+    MACRO_FX = "macro_fx"
+    OSINT_AGGREGATE = "osint_aggregate"
+
+
+class AccessMethod(StrEnum):
+    WEBSOCKET = "websocket"
+    WEBHOOK = "webhook"
+    STREAMING_API = "streaming_api"
+    REST_API = "rest_api"
+    RSS = "rss"
+    OFFICIAL_PAGE = "official_page"
+    PAID_API = "paid_api"
+    EMAIL_ALERT = "email_alert"
+    MANUAL_REVIEW_ONLY = "manual_review_only"
+
+
+class LicensingClass(StrEnum):
+    PUBLIC = "public"
+    PUBLIC_WITH_TERMS = "public_with_terms"
+    PAID_LICENSE_REQUIRED = "paid_license_required"
+    SCRAPING_PROHIBITED = "scraping_prohibited"
+    UNKNOWN = "unknown"
+
+
 class Direction(StrEnum):
     BULLISH_EQUINOR = "bullish_equinor"
     BEARISH_EQUINOR = "bearish_equinor"
@@ -44,6 +84,15 @@ class SourceEvent:
     title: str
     url: str
     payload: dict[str, object]
+    source_id: str | None = None
+    source_tier: SourceTier | None = None
+    source_category: SourceCategory | None = None
+    reliability_score: float | None = None
+    relevance_score: float | None = None
+    language: str | None = None
+    translation_required: bool = False
+    licensing_class: LicensingClass | None = None
+    raw_event_ref: str | None = None
     source_timestamp: datetime | None = None
     first_seen_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     id: str = field(default_factory=lambda: str(uuid4()))

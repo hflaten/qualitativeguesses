@@ -6,6 +6,7 @@ from enum import Enum
 from typing import AsyncIterator, Protocol
 
 from qualstocks.domain import SourceClass, SourceEvent
+from qualstocks.sources.registry import SourceDefinition
 
 
 class StrEnum(str, Enum):
@@ -31,6 +32,7 @@ class AdapterHealth:
     source: str
     source_class: SourceClass
     kind: AdapterKind
+    source_id: str | None = None
     status: AdapterHealthStatus = AdapterHealthStatus.UNKNOWN
     last_event_at: datetime | None = None
     last_checked_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -64,6 +66,7 @@ class BaseSourceAdapter:
     source: str
     source_class: SourceClass
     kind: AdapterKind
+    source_definition: SourceDefinition | None = None
     _started: bool = False
     _last_event_at: datetime | None = None
     _last_error: str | None = None
@@ -87,6 +90,7 @@ class BaseSourceAdapter:
             source=self.source,
             source_class=self.source_class,
             kind=self.kind,
+            source_id=self.source_definition.source_id if self.source_definition else None,
             status=status,
             last_event_at=self._last_event_at,
             last_error=self._last_error,
@@ -115,6 +119,24 @@ class BaseSourceAdapter:
             title=title,
             url=url,
             payload=payload,
+            source_id=self.source_definition.source_id if self.source_definition else None,
+            source_tier=self.source_definition.tier if self.source_definition else None,
+            source_category=self.source_definition.category if self.source_definition else None,
+            reliability_score=(
+                self.source_definition.reliability_score if self.source_definition else None
+            ),
+            language=self.source_definition.language if self.source_definition else None,
+            translation_required=(
+                self.source_definition.translation_required if self.source_definition else False
+            ),
+            licensing_class=(
+                self.source_definition.licensing_class if self.source_definition else None
+            ),
+            raw_event_ref=(
+                payload.get("raw_event_ref")
+                if isinstance(payload.get("raw_event_ref"), str)
+                else None
+            ),
             source_timestamp=source_timestamp,
         )
         self._last_event_at = event.first_seen_at
@@ -125,21 +147,60 @@ class BaseSourceAdapter:
 
 
 class WebSocketAdapter(BaseSourceAdapter):
-    def __init__(self, source: str, source_class: SourceClass) -> None:
-        super().__init__(source=source, source_class=source_class, kind=AdapterKind.WEBSOCKET)
+    def __init__(
+        self,
+        source: str,
+        source_class: SourceClass,
+        source_definition: SourceDefinition | None = None,
+    ) -> None:
+        super().__init__(
+            source=source,
+            source_class=source_class,
+            kind=AdapterKind.WEBSOCKET,
+            source_definition=source_definition,
+        )
 
 
 class WebhookAdapter(BaseSourceAdapter):
-    def __init__(self, source: str, source_class: SourceClass) -> None:
-        super().__init__(source=source, source_class=source_class, kind=AdapterKind.WEBHOOK)
+    def __init__(
+        self,
+        source: str,
+        source_class: SourceClass,
+        source_definition: SourceDefinition | None = None,
+    ) -> None:
+        super().__init__(
+            source=source,
+            source_class=source_class,
+            kind=AdapterKind.WEBHOOK,
+            source_definition=source_definition,
+        )
 
 
 class StreamingApiAdapter(BaseSourceAdapter):
-    def __init__(self, source: str, source_class: SourceClass) -> None:
-        super().__init__(source=source, source_class=source_class, kind=AdapterKind.STREAMING_API)
+    def __init__(
+        self,
+        source: str,
+        source_class: SourceClass,
+        source_definition: SourceDefinition | None = None,
+    ) -> None:
+        super().__init__(
+            source=source,
+            source_class=source_class,
+            kind=AdapterKind.STREAMING_API,
+            source_definition=source_definition,
+        )
 
 
 class FallbackPollingAdapter(BaseSourceAdapter):
-    def __init__(self, source: str, source_class: SourceClass) -> None:
-        super().__init__(source=source, source_class=source_class, kind=AdapterKind.FALLBACK_POLLING)
-
+    def __init__(
+        self,
+        source: str,
+        source_class: SourceClass,
+        source_definition: SourceDefinition | None = None,
+    ) -> None:
+        super().__init__(
+            source=source,
+            source_class=source_class,
+            kind=AdapterKind.FALLBACK_POLLING,
+            source_definition=source_definition,
+        )
