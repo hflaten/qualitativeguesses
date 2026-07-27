@@ -51,6 +51,15 @@ Run the import/type baseline:
 make typecheck
 ```
 
+## CI
+
+GitHub Actions runs the repository foundation checks on pull requests:
+
+```bash
+PYTHONPATH=src make test
+PYTHONPATH=src make typecheck
+```
+
 ## Database
 
 Supabase migrations live in `supabase/migrations`.
