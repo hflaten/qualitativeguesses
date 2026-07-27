@@ -13,6 +13,11 @@ class SettingsTest(unittest.TestCase):
         self.assertTrue(settings.paper_trading_only)
         self.assertEqual(settings.max_open_hypotheses, 1)
         self.assertEqual(settings.exit_windows_minutes, (30, 40, 50))
+        self.assertFalse(settings.source_official_us_rss_enabled)
+        self.assertFalse(settings.source_official_iran_rss_enabled)
+        self.assertFalse(settings.source_fixture_mode_enabled)
+        self.assertFalse(settings.watcher_run_once)
+        self.assertEqual(settings.watcher_interval_seconds, 30)
 
     def test_runtime_secret_status_is_false_without_required_values(self):
         with patch.dict(os.environ, {}, clear=True):
@@ -33,7 +38,23 @@ class SettingsTest(unittest.TestCase):
 
         self.assertTrue(settings.has_required_runtime_secrets)
 
+    def test_source_runtime_flags_are_loaded_from_environment(self):
+        env = {
+            "SOURCE_OFFICIAL_US_RSS_ENABLED": "true",
+            "SOURCE_OFFICIAL_IRAN_RSS_ENABLED": "1",
+            "SOURCE_FIXTURE_MODE_ENABLED": "yes",
+            "WATCHER_RUN_ONCE": "on",
+            "WATCHER_INTERVAL_SECONDS": "7",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = load_settings()
+
+        self.assertTrue(settings.source_official_us_rss_enabled)
+        self.assertTrue(settings.source_official_iran_rss_enabled)
+        self.assertTrue(settings.source_fixture_mode_enabled)
+        self.assertTrue(settings.watcher_run_once)
+        self.assertEqual(settings.watcher_interval_seconds, 7)
+
 
 if __name__ == "__main__":
     unittest.main()
-

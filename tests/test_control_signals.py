@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import unittest
 
-from qualstocks.domain import ActiveHypothesis, Direction, HypothesisState, SourceCategory, SourceTier
+from qualstocks.domain import (
+    ActiveHypothesis,
+    Direction,
+    HypothesisState,
+    SourceCategory,
+    SourceTier,
+)
 from qualstocks.signals import (
     ControlSignalEffect,
     HormuzClosureSignal,

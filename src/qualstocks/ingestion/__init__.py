@@ -1,5 +1,11 @@
 """Automatic ingestion runtime for normalized source events."""
 
+from qualstocks.ingestion.assembly import (
+    FixtureSourceAdapter,
+    RuntimeAssembly,
+    build_runtime_assembly,
+    build_source_adapters,
+)
 from qualstocks.ingestion.runtime import IngestionRuntime
 from qualstocks.ingestion.service import (
     AnalysisJob,
@@ -14,13 +20,16 @@ from qualstocks.ingestion.service import (
 
 __all__ = [
     "AnalysisJob",
+    "FixtureSourceAdapter",
     "IngestedEvent",
     "IngestionResult",
     "IngestionRuntime",
     "IngestionService",
     "InMemoryAnalysisQueue",
     "InMemoryEventRepository",
+    "RuntimeAssembly",
     "SourceEventRepository",
     "SourceEventStatus",
+    "build_runtime_assembly",
+    "build_source_adapters",
 ]
-

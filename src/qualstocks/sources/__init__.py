@@ -44,7 +44,13 @@ from qualstocks.sources.registry import (
     SourceDefinition,
     SourceRegistry,
 )
-from qualstocks.sources.rss import KeywordFilter, RssFeedAdapter, RssFeedNormalizer, RssItem
+from qualstocks.sources.rss import (
+    KeywordFilter,
+    RssFeedAdapter,
+    RssFeedNormalizer,
+    RssItem,
+    TextFetchClient,
+)
 from qualstocks.sources.polymarket import (
     PolymarketAdapter,
     PolymarketEventNormalizer,
@@ -80,6 +86,7 @@ __all__ = [
     "SourceDefinition",
     "SourceRegistry",
     "StreamingApiAdapter",
+    "TextFetchClient",
     "WebSocketAdapter",
     "WebhookAdapter",
     "ais_tanker_flow_event",

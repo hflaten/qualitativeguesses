@@ -49,6 +49,11 @@ class Settings:
     supabase_db_url: str
     railway_token: str
     railway_api_token: str
+    source_official_us_rss_enabled: bool
+    source_official_iran_rss_enabled: bool
+    source_fixture_mode_enabled: bool
+    watcher_run_once: bool
+    watcher_interval_seconds: int
 
     @property
     def has_required_runtime_secrets(self) -> bool:
@@ -70,6 +75,9 @@ class Settings:
             "max_open_hypotheses": self.max_open_hypotheses,
             "exit_windows_minutes": list(self.exit_windows_minutes),
             "runtime_secrets_present": self.has_required_runtime_secrets,
+            "source_official_us_rss_enabled": self.source_official_us_rss_enabled,
+            "source_official_iran_rss_enabled": self.source_official_iran_rss_enabled,
+            "source_fixture_mode_enabled": self.source_fixture_mode_enabled,
         }
 
 
@@ -93,5 +101,9 @@ def load_settings() -> Settings:
         supabase_db_url=_env("SUPABASE_DB_URL"),
         railway_token=_env("RAILWAY_TOKEN"),
         railway_api_token=_env("RAILWAY_API_TOKEN"),
+        source_official_us_rss_enabled=_env_bool("SOURCE_OFFICIAL_US_RSS_ENABLED", False),
+        source_official_iran_rss_enabled=_env_bool("SOURCE_OFFICIAL_IRAN_RSS_ENABLED", False),
+        source_fixture_mode_enabled=_env_bool("SOURCE_FIXTURE_MODE_ENABLED", False),
+        watcher_run_once=_env_bool("WATCHER_RUN_ONCE", False),
+        watcher_interval_seconds=_env_int("WATCHER_INTERVAL_SECONDS", 30),
     )
-
