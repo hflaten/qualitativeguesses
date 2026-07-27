@@ -10,6 +10,14 @@ from qualstocks.strategy.lifecycle import (
     PlannedExit,
     norwegian_confirmation_source,
 )
+from qualstocks.strategy.risk import (
+    PortfolioRiskSnapshot,
+    RiskDecisionStatus,
+    RiskGate,
+    RiskGateConfig,
+    RiskGateDecision,
+    TradingMode,
+)
 
 __all__ = [
     "HypothesisLifecycleConfig",
@@ -19,5 +27,11 @@ __all__ = [
     "PaperOrderIntent",
     "PaperOrderSide",
     "PlannedExit",
+    "PortfolioRiskSnapshot",
+    "RiskDecisionStatus",
+    "RiskGate",
+    "RiskGateConfig",
+    "RiskGateDecision",
+    "TradingMode",
     "norwegian_confirmation_source",
 ]

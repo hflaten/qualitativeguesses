@@ -38,6 +38,11 @@ class Settings:
     tranche_one_aum_pct: int
     tranche_two_aum_pct: int
     exit_windows_minutes: tuple[int, ...]
+    live_trading_enabled: bool
+    risk_max_single_name_exposure_pct: int
+    risk_max_event_exposure_pct: int
+    risk_max_daily_loss_pct: int
+    risk_live_max_order_aum_pct: int
     openai_api_key: str
     openai_filter_model: str
     openai_analysis_model: str
@@ -78,6 +83,11 @@ class Settings:
             "paper_trading_only": self.paper_trading_only,
             "max_open_hypotheses": self.max_open_hypotheses,
             "exit_windows_minutes": list(self.exit_windows_minutes),
+            "live_trading_enabled": self.live_trading_enabled,
+            "risk_max_single_name_exposure_pct": self.risk_max_single_name_exposure_pct,
+            "risk_max_event_exposure_pct": self.risk_max_event_exposure_pct,
+            "risk_max_daily_loss_pct": self.risk_max_daily_loss_pct,
+            "risk_live_max_order_aum_pct": self.risk_live_max_order_aum_pct,
             "runtime_secrets_present": self.has_required_runtime_secrets,
             "source_official_us_rss_enabled": self.source_official_us_rss_enabled,
             "source_official_iran_rss_enabled": self.source_official_iran_rss_enabled,
@@ -98,6 +108,11 @@ def load_settings() -> Settings:
         tranche_one_aum_pct=_env_int("TRANCHE_ONE_AUM_PCT", 50),
         tranche_two_aum_pct=_env_int("TRANCHE_TWO_AUM_PCT", 50),
         exit_windows_minutes=_env_csv_int("EXIT_WINDOWS_MINUTES", (30, 40, 50)),
+        live_trading_enabled=_env_bool("LIVE_TRADING_ENABLED", False),
+        risk_max_single_name_exposure_pct=_env_int("RISK_MAX_SINGLE_NAME_EXPOSURE_PCT", 100),
+        risk_max_event_exposure_pct=_env_int("RISK_MAX_EVENT_EXPOSURE_PCT", 100),
+        risk_max_daily_loss_pct=_env_int("RISK_MAX_DAILY_LOSS_PCT", 5),
+        risk_live_max_order_aum_pct=_env_int("RISK_LIVE_MAX_ORDER_AUM_PCT", 5),
         openai_api_key=_env("OPENAI_API_KEY"),
         openai_filter_model=_env("OPENAI_FILTER_MODEL", "gpt-5-nano"),
         openai_analysis_model=_env("OPENAI_ANALYSIS_MODEL", "gpt-5-mini"),

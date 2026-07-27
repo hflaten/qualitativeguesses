@@ -13,6 +13,11 @@ class SettingsTest(unittest.TestCase):
         self.assertTrue(settings.paper_trading_only)
         self.assertEqual(settings.max_open_hypotheses, 1)
         self.assertEqual(settings.exit_windows_minutes, (30, 40, 50))
+        self.assertFalse(settings.live_trading_enabled)
+        self.assertEqual(settings.risk_max_single_name_exposure_pct, 100)
+        self.assertEqual(settings.risk_max_event_exposure_pct, 100)
+        self.assertEqual(settings.risk_max_daily_loss_pct, 5)
+        self.assertEqual(settings.risk_live_max_order_aum_pct, 5)
         self.assertFalse(settings.source_official_us_rss_enabled)
         self.assertFalse(settings.source_official_iran_rss_enabled)
         self.assertFalse(settings.source_fixture_mode_enabled)
@@ -51,6 +56,11 @@ class SettingsTest(unittest.TestCase):
             "KALSHI_ENV": "production",
             "KALSHI_API_KEY_ID": "kalshi-key",
             "KALSHI_PRIVATE_KEY_PEM": "kalshi-private-key",
+            "LIVE_TRADING_ENABLED": "true",
+            "RISK_MAX_SINGLE_NAME_EXPOSURE_PCT": "80",
+            "RISK_MAX_EVENT_EXPOSURE_PCT": "60",
+            "RISK_MAX_DAILY_LOSS_PCT": "4",
+            "RISK_LIVE_MAX_ORDER_AUM_PCT": "3",
             "WATCHER_RUN_ONCE": "on",
             "WATCHER_INTERVAL_SECONDS": "7",
         }
@@ -65,6 +75,11 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.kalshi_api_key_id, "kalshi-key")
         self.assertEqual(settings.kalshi_private_key_pem, "kalshi-private-key")
         self.assertTrue(settings.public_status["kalshi_configured"])
+        self.assertTrue(settings.live_trading_enabled)
+        self.assertEqual(settings.risk_max_single_name_exposure_pct, 80)
+        self.assertEqual(settings.risk_max_event_exposure_pct, 60)
+        self.assertEqual(settings.risk_max_daily_loss_pct, 4)
+        self.assertEqual(settings.risk_live_max_order_aum_pct, 3)
         self.assertTrue(settings.watcher_run_once)
         self.assertEqual(settings.watcher_interval_seconds, 7)
 
