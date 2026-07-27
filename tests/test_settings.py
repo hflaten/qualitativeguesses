@@ -16,6 +16,7 @@ class SettingsTest(unittest.TestCase):
         self.assertFalse(settings.source_official_us_rss_enabled)
         self.assertFalse(settings.source_official_iran_rss_enabled)
         self.assertFalse(settings.source_fixture_mode_enabled)
+        self.assertEqual(settings.source_persistence_backend, "memory")
         self.assertFalse(settings.watcher_run_once)
         self.assertEqual(settings.watcher_interval_seconds, 30)
 
@@ -43,6 +44,7 @@ class SettingsTest(unittest.TestCase):
             "SOURCE_OFFICIAL_US_RSS_ENABLED": "true",
             "SOURCE_OFFICIAL_IRAN_RSS_ENABLED": "1",
             "SOURCE_FIXTURE_MODE_ENABLED": "yes",
+            "SOURCE_PERSISTENCE_BACKEND": "postgres",
             "WATCHER_RUN_ONCE": "on",
             "WATCHER_INTERVAL_SECONDS": "7",
         }
@@ -52,6 +54,7 @@ class SettingsTest(unittest.TestCase):
         self.assertTrue(settings.source_official_us_rss_enabled)
         self.assertTrue(settings.source_official_iran_rss_enabled)
         self.assertTrue(settings.source_fixture_mode_enabled)
+        self.assertEqual(settings.source_persistence_backend, "postgres")
         self.assertTrue(settings.watcher_run_once)
         self.assertEqual(settings.watcher_interval_seconds, 7)
 

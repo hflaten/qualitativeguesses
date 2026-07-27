@@ -6,9 +6,17 @@ from typing import AsyncIterator
 from qualstocks.domain import SourceClass, SourceEvent
 from qualstocks.ingestion.runtime import IngestionRuntime
 from qualstocks.ingestion.service import (
+    AnalysisQueue,
     IngestionService,
     InMemoryAnalysisQueue,
     InMemoryEventRepository,
+    SourceEventRepository,
+)
+from qualstocks.ingestion.postgres import (
+    DatabaseClient,
+    PostgresAnalysisQueue,
+    PostgresSourceEventRepository,
+    PsycopgDatabaseClient,
 )
 from qualstocks.settings import Settings
 from qualstocks.sources import (
@@ -24,9 +32,10 @@ from qualstocks.sources import (
 @dataclass(frozen=True)
 class RuntimeAssembly:
     runtime: IngestionRuntime
-    repository: InMemoryEventRepository
-    analysis_queue: InMemoryAnalysisQueue
+    repository: SourceEventRepository
+    analysis_queue: AnalysisQueue
     adapter_source_ids: tuple[str, ...]
+    persistence_backend: str
 
 
 def build_source_adapters(
@@ -48,9 +57,12 @@ def build_runtime_assembly(
     settings: Settings,
     *,
     fetch_client: TextFetchClient | None = None,
+    database_client: DatabaseClient | None = None,
 ) -> RuntimeAssembly:
-    repository = InMemoryEventRepository()
-    analysis_queue = InMemoryAnalysisQueue()
+    repository, analysis_queue = build_persistence_components(
+        settings,
+        database_client=database_client,
+    )
     service = IngestionService(repository=repository, analysis_queue=analysis_queue)
     adapters = build_source_adapters(settings, fetch_client=fetch_client)
     return RuntimeAssembly(
@@ -58,7 +70,25 @@ def build_runtime_assembly(
         repository=repository,
         analysis_queue=analysis_queue,
         adapter_source_ids=_adapter_source_ids(adapters),
+        persistence_backend=settings.source_persistence_backend,
     )
+
+
+def build_persistence_components(
+    settings: Settings,
+    *,
+    database_client: DatabaseClient | None = None,
+) -> tuple[SourceEventRepository, AnalysisQueue]:
+    if settings.source_persistence_backend == "postgres":
+        if database_client is None and not settings.supabase_db_url:
+            raise ValueError("SUPABASE_DB_URL is required for postgres source persistence")
+        client = database_client or PsycopgDatabaseClient(settings.supabase_db_url)
+        return PostgresSourceEventRepository(client), PostgresAnalysisQueue(client)
+    if settings.source_persistence_backend != "memory":
+        raise ValueError(
+            f"unknown source persistence backend: {settings.source_persistence_backend}"
+        )
+    return InMemoryEventRepository(), InMemoryAnalysisQueue()
 
 
 class FixtureSourceAdapter(WebhookAdapter):
