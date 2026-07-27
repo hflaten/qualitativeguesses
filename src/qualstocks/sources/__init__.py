@@ -18,6 +18,13 @@ from qualstocks.sources.official_us import (
     build_dod_rss_adapter,
     build_official_us_rss_adapters,
 )
+from qualstocks.sources.official_iran import (
+    IRAN_SIGNAL_KEYWORDS,
+    IranSourceAccessNote,
+    build_official_iran_rss_adapters,
+    build_tasnim_rss_adapter,
+    iran_source_access_notes,
+)
 from qualstocks.sources.registry import (
     DEFAULT_SOURCE_DEFINITIONS,
     DEFAULT_SOURCE_REGISTRY,
@@ -42,6 +49,8 @@ __all__ = [
     "DEFAULT_SOURCE_REGISTRY",
     "FallbackPollingAdapter",
     "HttpxTextFetchClient",
+    "IRAN_SIGNAL_KEYWORDS",
+    "IranSourceAccessNote",
     "KeywordFilter",
     "OFFICIAL_US_KEYWORDS",
     "PolymarketAdapter",
@@ -60,5 +69,8 @@ __all__ = [
     "RssItem",
     "build_centcom_rss_adapter",
     "build_dod_rss_adapter",
+    "build_official_iran_rss_adapters",
     "build_official_us_rss_adapters",
+    "build_tasnim_rss_adapter",
+    "iran_source_access_notes",
 ]
