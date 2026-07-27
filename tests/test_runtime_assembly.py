@@ -5,7 +5,12 @@ import os
 import unittest
 from unittest.mock import patch
 
-from qualstocks.ingestion import build_runtime_assembly, build_source_adapters
+from qualstocks.ingestion import (
+    PostgresAnalysisQueue,
+    PostgresSourceEventRepository,
+    build_runtime_assembly,
+    build_source_adapters,
+)
 from qualstocks.settings import load_settings
 from qualstocks.watcher import run_watcher
 
@@ -34,6 +39,20 @@ class FakeTextFetchClient:
     async def get_text(self, url: str) -> str:
         self.urls.append(url)
         return self.text
+
+
+class FakeDatabaseClient:
+    def insert_source_event(self, values):
+        return {"id": values["id"], "created_at": values["first_seen_at"]}
+
+    def fetch_source_event_by_key(self, idempotency_key):
+        return None
+
+    def upsert_source_health(self, values):
+        pass
+
+    def insert_analysis_job(self, values):
+        return {"id": "analysis-job-1", "queued_at": None}
 
 
 def settings_from_env(env: dict[str, str]):
@@ -106,6 +125,26 @@ class RuntimeAssemblyTest(unittest.TestCase):
 
         self.assertEqual(len(assembly.repository.events_by_key), 0)
         self.assertEqual(len(assembly.analysis_queue.jobs), 0)
+
+    def test_postgres_backend_selects_postgres_repository_and_queue(self):
+        settings = settings_from_env(
+            {
+                "SOURCE_PERSISTENCE_BACKEND": "postgres",
+                "SUPABASE_DB_URL": "postgresql://postgres:password@example/postgres",
+            }
+        )
+
+        assembly = build_runtime_assembly(settings, database_client=FakeDatabaseClient())
+
+        self.assertIsInstance(assembly.repository, PostgresSourceEventRepository)
+        self.assertIsInstance(assembly.analysis_queue, PostgresAnalysisQueue)
+        self.assertEqual(assembly.persistence_backend, "postgres")
+
+    def test_postgres_backend_requires_db_url_without_injected_client(self):
+        settings = settings_from_env({"SOURCE_PERSISTENCE_BACKEND": "postgres"})
+
+        with self.assertRaises(ValueError):
+            build_runtime_assembly(settings)
 
 
 if __name__ == "__main__":

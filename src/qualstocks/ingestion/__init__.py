@@ -3,8 +3,15 @@
 from qualstocks.ingestion.assembly import (
     FixtureSourceAdapter,
     RuntimeAssembly,
+    build_persistence_components,
     build_runtime_assembly,
     build_source_adapters,
+)
+from qualstocks.ingestion.postgres import (
+    DatabaseClient,
+    PostgresAnalysisQueue,
+    PostgresSourceEventRepository,
+    PsycopgDatabaseClient,
 )
 from qualstocks.ingestion.runtime import IngestionRuntime
 from qualstocks.ingestion.service import (
@@ -20,6 +27,7 @@ from qualstocks.ingestion.service import (
 
 __all__ = [
     "AnalysisJob",
+    "DatabaseClient",
     "FixtureSourceAdapter",
     "IngestedEvent",
     "IngestionResult",
@@ -30,6 +38,10 @@ __all__ = [
     "RuntimeAssembly",
     "SourceEventRepository",
     "SourceEventStatus",
+    "PostgresAnalysisQueue",
+    "PostgresSourceEventRepository",
+    "PsycopgDatabaseClient",
+    "build_persistence_components",
     "build_runtime_assembly",
     "build_source_adapters",
 ]
