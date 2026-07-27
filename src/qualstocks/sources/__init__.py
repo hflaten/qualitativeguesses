@@ -17,6 +17,13 @@ from qualstocks.sources.registry import (
     SourceDefinition,
     SourceRegistry,
 )
+from qualstocks.sources.polymarket import (
+    PolymarketAdapter,
+    PolymarketEventNormalizer,
+    PolymarketEventType,
+    PolymarketMarket,
+    PolymarketSignalConfig,
+)
 
 __all__ = [
     "AdapterHealth",
@@ -26,6 +33,11 @@ __all__ = [
     "DEFAULT_SOURCE_DEFINITIONS",
     "DEFAULT_SOURCE_REGISTRY",
     "FallbackPollingAdapter",
+    "PolymarketAdapter",
+    "PolymarketEventNormalizer",
+    "PolymarketEventType",
+    "PolymarketMarket",
+    "PolymarketSignalConfig",
     "SourceAdapter",
     "SourceDefinition",
     "SourceRegistry",
