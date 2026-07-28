@@ -15,6 +15,7 @@ from qualstocks.strategy import (
     PortfolioRiskSnapshot,
     RiskGate,
 )
+from qualstocks.strategy.orchestrator import OrchestratorAuditEvent
 
 
 class FakeTradingDatabaseClient:
@@ -25,6 +26,7 @@ class FakeTradingDatabaseClient:
         self.paper_fills = {}
         self.position_snapshot = None
         self.valuation_snapshots = []
+        self.audit_events = {}
 
     def insert_event_classification(self, values):
         key = (values["event_id"], values["model"])
@@ -83,7 +85,19 @@ class FakeTradingDatabaseClient:
         return {
             "position": self.position_snapshot,
             "valuation": self.valuation_snapshots[-1] if self.valuation_snapshots else None,
+            "audit_timeline": list(self.audit_events.values()),
         }
+
+    def insert_audit_event(self, values):
+        key = values["idempotency_key"]
+        if key in self.audit_events:
+            return None
+        row = {"id": str(uuid4()), **values}
+        self.audit_events[key] = row
+        return row
+
+    def fetch_audit_event_by_key(self, idempotency_key):
+        return self.audit_events.get(idempotency_key)
 
 
 class TradingPersistenceTest(unittest.TestCase):
@@ -193,6 +207,70 @@ class TradingPersistenceTest(unittest.TestCase):
         self.assertEqual(read_model["position"]["instrument"], "EQNR.OL")
         self.assertEqual(read_model["valuation"]["last_price"], Decimal("330.0000"))
         self.assertEqual(read_model["valuation"]["quote_freshness"], "fresh")
+
+    def test_orchestrator_audit_event_persistence_is_replay_safe(self):
+        event = OrchestratorAuditEvent(
+            action="hypothesis_transition",
+            summary="First qualifying trigger opens the paper-trading hypothesis.",
+            created_at=self.now,
+            event_id=self.event_id,
+            hypothesis_id=self.hypothesis_id,
+            payload={
+                "effective_confidence": 0.82,
+                "source_weight": {"source_id": "centcom_rss", "defaulted": False},
+            },
+        )
+
+        first = self.repository.persist_orchestrator_audit_event(
+            event,
+            idempotency_key="audit:hypothesis:event-1",
+        )
+        second = self.repository.persist_orchestrator_audit_event(
+            event,
+            idempotency_key="audit:hypothesis:event-1",
+        )
+        stored = self.client.audit_events["audit:hypothesis:event-1"]
+
+        self.assertEqual(first.status, PersistenceStatus.CREATED)
+        self.assertEqual(second.status, PersistenceStatus.DUPLICATE)
+        self.assertEqual(len(self.client.audit_events), 1)
+        self.assertEqual(stored["action"], "hypothesis_transition")
+        payload = json.loads(stored["payload"])
+        self.assertEqual(payload["effective_confidence"], 0.82)
+        self.assertEqual(payload["source_weight"]["source_id"], "centcom_rss")
+
+    def test_batch_audit_persistence_builds_stable_idempotency_keys(self):
+        events = (
+            OrchestratorAuditEvent(
+                action="risk_decision_approved",
+                summary="Risk approved.",
+                created_at=self.now,
+                event_id=self.event_id,
+                order_id=str(uuid4()),
+                payload={"status": "approved"},
+            ),
+            OrchestratorAuditEvent(
+                action="paper_fill_created",
+                summary="Paper fill created.",
+                created_at=self.now,
+                event_id=self.event_id,
+                order_id=str(uuid4()),
+                payload={"fill_id": "fill-1"},
+            ),
+        )
+
+        first = self.repository.persist_orchestrator_audit_events(
+            events,
+            idempotency_prefix="scenario-1",
+        )
+        second = self.repository.persist_orchestrator_audit_events(
+            events,
+            idempotency_prefix="scenario-1",
+        )
+
+        self.assertEqual([result.status for result in first], [PersistenceStatus.CREATED] * 2)
+        self.assertEqual([result.status for result in second], [PersistenceStatus.DUPLICATE] * 2)
+        self.assertEqual(len(self.client.audit_events), 2)
 
     def _classification(self) -> EventClassification:
         return EventClassification(

@@ -63,6 +63,12 @@ class DatabaseClient(Protocol):
     def insert_valuation_snapshot(self, values: dict[str, object]) -> dict[str, object]:
         """Insert a paper valuation snapshot and return the row."""
 
+    def insert_audit_event(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert an audit event and return the row, or None on duplicate."""
+
+    def fetch_audit_event_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        """Fetch an audit event by idempotency key."""
+
     def fetch_dashboard_read_model(self, hypothesis_id: str | None = None) -> dict[str, object]:
         """Fetch latest paper state for dashboard rendering."""
 
@@ -602,6 +608,47 @@ class PsycopgDatabaseClient:
             raise RuntimeError("valuation snapshot insert returned no row")
         return row
 
+    def insert_audit_event(self, values: dict[str, object]) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            insert into audit_log (
+              hypothesis_id,
+              event_id,
+              order_id,
+              action,
+              actor,
+              summary,
+              payload,
+              idempotency_key,
+              created_at
+            )
+            values (
+              %(hypothesis_id)s,
+              %(event_id)s,
+              %(order_id)s,
+              %(action)s,
+              %(actor)s,
+              %(summary)s,
+              %(payload)s::jsonb,
+              %(idempotency_key)s,
+              %(created_at)s
+            )
+            on conflict (idempotency_key) do nothing
+            returning id, created_at
+            """,
+            values,
+        )
+
+    def fetch_audit_event_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select id, created_at
+            from audit_log
+            where idempotency_key = %(idempotency_key)s
+            """,
+            {"idempotency_key": idempotency_key},
+        )
+
     def fetch_dashboard_read_model(self, hypothesis_id: str | None = None) -> dict[str, object]:
         return self._fetchone(
             """
@@ -724,7 +771,16 @@ class PsycopgDatabaseClient:
                 (
                   select jsonb_agg(to_jsonb(a) order by a.created_at desc)
                   from (
-                    select id, action, summary, actor, hypothesis_id, event_id, created_at
+                    select
+                      id,
+                      action,
+                      summary,
+                      actor,
+                      hypothesis_id,
+                      event_id,
+                      order_id,
+                      payload,
+                      created_at
                     from audit_log
                     where (
                       %(hypothesis_id)s::uuid is null

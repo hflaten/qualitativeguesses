@@ -150,10 +150,12 @@ create table audit_log (
   id uuid primary key default gen_random_uuid(),
   hypothesis_id uuid references hypotheses(id),
   event_id uuid references source_events(id),
+  order_id uuid references paper_orders(id),
   action text not null,
   actor text not null default 'system',
   summary text not null,
   payload jsonb not null default '{}'::jsonb,
+  idempotency_key text unique,
   created_at timestamptz not null default now()
 );
 

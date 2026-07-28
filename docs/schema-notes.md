@@ -32,7 +32,8 @@ The migration covers the required V1 durable records:
   linkage for staged entries and exits.
 - `source_health` can power source status in the operator dashboard.
 - `audit_log` can record events, AI decisions, risk decisions, paper orders,
-  exits, and state transitions.
+  exits, and state transitions. It includes an idempotency key so replayed
+  workers or scenario runs can preserve a single durable audit row per action.
 
 ## Follow-up recommendations
 
