@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
+from qualstocks.runtime_health import service_health_payload
 from qualstocks.settings import Settings
 
 
@@ -143,10 +144,10 @@ def _source_health(value: object, now: datetime) -> list[dict[str, object]]:
 
 
 def _services(settings: Settings, services_error: str | None) -> dict[str, object]:
+    services = service_health_payload(settings)
+    services["api"]["status"] = "degraded" if services_error else "healthy"
     return {
-        "api": "online",
-        "watcher": "not_connected",
-        "worker": "not_connected",
+        **services,
         "supabase": (
             "degraded"
             if services_error

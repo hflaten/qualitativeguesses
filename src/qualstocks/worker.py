@@ -9,11 +9,18 @@ from qualstocks.analysis import (
     OpenAIJsonClassificationClient,
 )
 from qualstocks.ingestion import PaperTradingRepository, PsycopgDatabaseClient
+from qualstocks.runtime_health import (
+    ServiceName,
+    service_health_payload,
+    validate_service_startup,
+)
 from qualstocks.settings import load_settings
 
 
 def build_analysis_worker() -> EventAnalysisWorker:
     settings = load_settings()
+    startup = validate_service_startup(settings, ServiceName.AI_WORKER)
+    startup.raise_for_errors()
     if settings.source_persistence_backend != "postgres":
         raise ValueError("analysis worker requires SOURCE_PERSISTENCE_BACKEND=postgres")
     if not settings.supabase_db_url:
@@ -35,11 +42,15 @@ def build_analysis_worker() -> EventAnalysisWorker:
 
 def main() -> None:
     settings = load_settings()
+    startup = validate_service_startup(settings, ServiceName.AI_WORKER)
+    startup.raise_for_errors()
     print(
         "worker-service starting",
         {
             "app_env": settings.app_env,
             "runtime_secrets_present": settings.has_required_runtime_secrets,
+            "startup": startup.as_log_payload(),
+            "services": service_health_payload(settings),
         },
         flush=True,
     )

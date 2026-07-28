@@ -36,6 +36,10 @@ Recommended variables:
 
 - `APP_ENV=prod`
 - `APP_NAME=qualitativeguesses`
+- `SOURCE_PERSISTENCE_BACKEND=postgres`
+- `SOURCE_OFFICIAL_US_RSS_ENABLED=true`
+- `SOURCE_OFFICIAL_IRAN_RSS_ENABLED=true`
+- `SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED=true`
 - `OPENAI_FILTER_MODEL=gpt-5-nano`
 - `OPENAI_ANALYSIS_MODEL=gpt-5-mini`
 - `OPENAI_ESCALATION_MODEL=gpt-5.1`
@@ -87,9 +91,30 @@ V1 watcher and worker services log startup status. Later issues should add
 database-backed service heartbeat records in `source_health` or a dedicated
 service health table.
 
+Each service logs a startup validation payload. In `APP_ENV=prod` or
+`APP_ENV=production`, startup fails when:
+
+- `PAPER_TRADING_ONLY` is missing or not `true`.
+- `LIVE_TRADING_ENABLED=true`.
+- `MAX_OPEN_HYPOTHESES` is missing or not `1`.
+- A service-specific secret is missing.
+
+Service-specific requirements:
+
+- `api-service`: `SUPABASE_DB_URL` when `SOURCE_PERSISTENCE_BACKEND=postgres`.
+- `watcher-service`: `SUPABASE_DB_URL` when `SOURCE_PERSISTENCE_BACKEND=postgres`.
+- `worker-service`: `SOURCE_PERSISTENCE_BACKEND=postgres`, `SUPABASE_DB_URL`,
+  and `OPENAI_API_KEY`.
+- `paper-trading-worker`: `SOURCE_PERSISTENCE_BACKEND=postgres` and
+  `SUPABASE_DB_URL` before a dedicated paper worker service is enabled.
+
+The API `/health` response includes component status for API, watcher, AI worker,
+quote provider, and paper-trading worker. In local/dev environments, missing
+runtime wiring is reported as warnings or degraded component status so the app
+can still be opened while secrets are being configured.
+
 ## Notes
 
 Railway's default environment may be named `Production` even while we are still
 building paper-trading infrastructure. Treat the deployed system as production
 runtime for paper trading only, not live trading.
-

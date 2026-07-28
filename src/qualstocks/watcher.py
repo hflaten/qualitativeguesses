@@ -3,6 +3,11 @@ from __future__ import annotations
 import asyncio
 
 from qualstocks.ingestion import RuntimeAssembly, build_runtime_assembly
+from qualstocks.runtime_health import (
+    ServiceName,
+    service_health_payload,
+    validate_service_startup,
+)
 from qualstocks.settings import load_settings
 
 
@@ -22,6 +27,8 @@ async def run_watcher_forever(assembly: RuntimeAssembly, *, interval_seconds: in
 
 async def async_main() -> None:
     settings = load_settings()
+    startup = validate_service_startup(settings, ServiceName.WATCHER)
+    startup.raise_for_errors()
     assembly = build_runtime_assembly(settings)
     print(
         "watcher-service starting",
@@ -30,6 +37,8 @@ async def async_main() -> None:
             "paper_trading_only": settings.paper_trading_only,
             "max_open_hypotheses": settings.max_open_hypotheses,
             "adapter_source_ids": assembly.adapter_source_ids,
+            "startup": startup.as_log_payload(),
+            "services": service_health_payload(settings),
         },
         flush=True,
     )
