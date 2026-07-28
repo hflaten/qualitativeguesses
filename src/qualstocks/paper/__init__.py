@@ -10,6 +10,17 @@ from qualstocks.paper.backtest import (
     PricePoint,
     run_exit_backtest,
 )
+from qualstocks.paper.backtest_dataset import (
+    BacktestSummaryRow,
+    ControlPoint,
+    ControlSeriesName,
+    HistoricalBacktestDataset,
+    load_historical_backtest_dataset,
+    run_historical_exit_backtest,
+    summarize_exit_backtests,
+    summary_rows_as_dicts,
+    summary_rows_to_csv,
+)
 from qualstocks.paper.ledger import (
     MarketQuote,
     PaperFill,
@@ -33,11 +44,15 @@ from qualstocks.paper.quotes import (
 
 __all__ = [
     "BacktestCase",
+    "BacktestSummaryRow",
+    "ControlPoint",
+    "ControlSeriesName",
     "ExitAnchor",
     "ExitBacktestConfig",
     "ExitBacktestResult",
     "ExitVariantResult",
     "HttpxJsonFetchClient",
+    "HistoricalBacktestDataset",
     "JsonFetchClient",
     "MarketQuote",
     "NorwegianConfirmationStatus",
@@ -55,5 +70,10 @@ __all__ = [
     "QuoteFreshness",
     "YahooChartQuoteProvider",
     "build_quote_provider",
+    "load_historical_backtest_dataset",
     "run_exit_backtest",
+    "run_historical_exit_backtest",
+    "summarize_exit_backtests",
+    "summary_rows_as_dicts",
+    "summary_rows_to_csv",
 ]
