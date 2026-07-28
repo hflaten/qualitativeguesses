@@ -61,6 +61,21 @@ class DatabaseClient(Protocol):
     def fetch_dashboard_read_model(self, hypothesis_id: str | None = None) -> dict[str, object]:
         """Fetch latest paper state for dashboard rendering."""
 
+    def claim_queued_analysis_job(
+        self,
+        values: dict[str, object],
+    ) -> dict[str, object] | None:
+        """Atomically claim one queued analysis job."""
+
+    def fetch_source_event(self, event_id: str) -> dict[str, object] | None:
+        """Fetch a persisted source event by id."""
+
+    def mark_analysis_job_completed(self, values: dict[str, object]) -> None:
+        """Mark an analysis job completed."""
+
+    def mark_analysis_job_failed(self, values: dict[str, object]) -> None:
+        """Mark an analysis job failed."""
+
 
 @dataclass(frozen=True)
 class PostgresSourceEventRepository:
@@ -646,6 +661,77 @@ class PsycopgDatabaseClient:
             "risk_decisions": [],
             "audit_timeline": [],
         }
+
+    def claim_queued_analysis_job(
+        self,
+        values: dict[str, object],
+    ) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            update analysis_jobs
+            set
+              status = 'processing',
+              attempts = attempts + 1,
+              started_at = %(now)s,
+              last_error = null
+            where id = (
+              select id
+              from analysis_jobs
+              where status = 'queued'
+              order by queued_at
+              for update skip locked
+              limit 1
+            )
+            returning
+              id,
+              event_id,
+              idempotency_key,
+              source,
+              source_class,
+              source_id,
+              payload,
+              attempts
+            """,
+            values,
+        )
+
+    def fetch_source_event(self, event_id: str) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select *
+            from source_events
+            where id = %(event_id)s
+            """,
+            {"event_id": event_id},
+        )
+
+    def mark_analysis_job_completed(self, values: dict[str, object]) -> None:
+        self._execute(
+            """
+            update analysis_jobs
+            set
+              status = 'completed',
+              completed_at = %(now)s,
+              failed_at = null,
+              last_error = null,
+              payload = payload || %(payload)s::jsonb
+            where id = %(job_id)s
+            """,
+            values,
+        )
+
+    def mark_analysis_job_failed(self, values: dict[str, object]) -> None:
+        self._execute(
+            """
+            update analysis_jobs
+            set
+              status = 'failed',
+              failed_at = %(now)s,
+              last_error = %(error)s
+            where id = %(job_id)s
+            """,
+            values,
+        )
 
     def _fetchone(self, query: str, values: dict[str, object]) -> dict[str, object] | None:
         import psycopg
