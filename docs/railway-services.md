@@ -14,6 +14,9 @@ Create three Railway services from the same GitHub repository:
 - `watcher-service`
 - `worker-service`
 
+The checked-in service template is `railway/service-templates.json`, with usage
+notes in `docs/railway-service-templates.md`.
+
 All services should use the same branch while the foundation is being reviewed.
 After merge, production services should track `main`.
 
