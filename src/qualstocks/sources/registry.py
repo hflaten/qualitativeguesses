@@ -304,7 +304,7 @@ DEFAULT_SOURCE_DEFINITIONS: tuple[SourceDefinition, ...] = (
         source_id="ap_media_api",
         name="AP Media API",
         source_class=SourceClass.OSINT,
-        tier=SourceTier.CONFIRMATION,
+        tier=SourceTier.TRIGGER,
         category=SourceCategory.WIRE_OR_NEWSPAPER,
         access_methods=(AccessMethod.PAID_API,),
         reliability_score=0.86,
@@ -312,12 +312,13 @@ DEFAULT_SOURCE_DEFINITIONS: tuple[SourceDefinition, ...] = (
         licensing_class=LicensingClass.PAID_LICENSE_REQUIRED,
         language="en",
         url="https://api.ap.org/media/v/docs/Getting_Started_API.htm",
+        notes="Disabled by default; requires AP contract allowing automated trading research use.",
     ),
     SourceDefinition(
         source_id="reuters_lseg_news",
         name="Reuters / LSEG News Service",
         source_class=SourceClass.OSINT,
-        tier=SourceTier.CONFIRMATION,
+        tier=SourceTier.TRIGGER,
         category=SourceCategory.WIRE_OR_NEWSPAPER,
         access_methods=(AccessMethod.PAID_API, AccessMethod.STREAMING_API),
         reliability_score=0.9,
@@ -325,6 +326,10 @@ DEFAULT_SOURCE_DEFINITIONS: tuple[SourceDefinition, ...] = (
         licensing_class=LicensingClass.PAID_LICENSE_REQUIRED,
         language="en",
         url="https://developers.lseg.com/en/product/news/news_service_rdp",
+        notes=(
+            "First paid feed to benchmark; disabled until a contract permits "
+            "automated ingestion, storage, AI analysis, and trading research."
+        ),
     ),
     SourceDefinition(
         source_id="ukmto",

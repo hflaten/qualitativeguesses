@@ -65,6 +65,8 @@ class Settings:
     source_official_us_rss_enabled: bool
     source_official_iran_rss_enabled: bool
     source_norwegian_confirmation_rss_enabled: bool
+    source_lseg_reuters_enabled: bool
+    source_ap_media_api_enabled: bool
     source_fixture_mode_enabled: bool
     source_persistence_backend: str
     watcher_run_once: bool
@@ -103,6 +105,8 @@ class Settings:
             "source_norwegian_confirmation_rss_enabled": (
                 self.source_norwegian_confirmation_rss_enabled
             ),
+            "source_lseg_reuters_enabled": self.source_lseg_reuters_enabled,
+            "source_ap_media_api_enabled": self.source_ap_media_api_enabled,
             "source_fixture_mode_enabled": self.source_fixture_mode_enabled,
             "source_persistence_backend": self.source_persistence_backend,
             "kalshi_configured": bool(
@@ -150,6 +154,8 @@ def load_settings() -> Settings:
             "SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED",
             False,
         ),
+        source_lseg_reuters_enabled=_env_bool("SOURCE_LSEG_REUTERS_ENABLED", False),
+        source_ap_media_api_enabled=_env_bool("SOURCE_AP_MEDIA_API_ENABLED", False),
         source_fixture_mode_enabled=_env_bool("SOURCE_FIXTURE_MODE_ENABLED", False),
         source_persistence_backend=_env("SOURCE_PERSISTENCE_BACKEND", "memory"),
         watcher_run_once=_env_bool("WATCHER_RUN_ONCE", False),

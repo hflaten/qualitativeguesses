@@ -19,15 +19,16 @@ from qualstocks.ingestion.postgres import (
     PsycopgDatabaseClient,
 )
 from qualstocks.settings import Settings
-from qualstocks.sources import (
-    DEFAULT_SOURCE_REGISTRY,
-    SourceAdapter,
-    TextFetchClient,
-    WebhookAdapter,
-    build_norwegian_confirmation_rss_adapters,
-    build_official_iran_rss_adapters,
-    build_official_us_rss_adapters,
+from qualstocks.sources.adapters import SourceAdapter, WebhookAdapter
+from qualstocks.sources.licensed_feeds import (
+    ApMediaLicensedFeedAdapter,
+    LsegReutersLicensedFeedAdapter,
 )
+from qualstocks.sources.norwegian import build_norwegian_confirmation_rss_adapters
+from qualstocks.sources.official_iran import build_official_iran_rss_adapters
+from qualstocks.sources.official_us import build_official_us_rss_adapters
+from qualstocks.sources.registry import DEFAULT_SOURCE_REGISTRY
+from qualstocks.sources.rss import TextFetchClient
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,18 @@ def build_source_adapters(
     if settings.source_norwegian_confirmation_rss_enabled:
         adapters.extend(
             build_norwegian_confirmation_rss_adapters(fetch_client=fetch_client)
+        )
+    if settings.source_lseg_reuters_enabled:
+        adapters.append(
+            LsegReutersLicensedFeedAdapter(
+                source_definition=DEFAULT_SOURCE_REGISTRY.require("reuters_lseg_news")
+            )
+        )
+    if settings.source_ap_media_api_enabled:
+        adapters.append(
+            ApMediaLicensedFeedAdapter(
+                source_definition=DEFAULT_SOURCE_REGISTRY.require("ap_media_api")
+            )
         )
     return tuple(adapters)
 

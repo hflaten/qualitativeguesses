@@ -41,6 +41,9 @@ The first source predictive-power research dataset is documented in
 Licensed newspaper and wire-feed source research is documented in
 `docs/licensed-news-feed-research.md`.
 
+Licensed feed adapter skeletons are documented in
+`docs/licensed-feed-adapter-skeletons.md`.
+
 Replayable paper-trading dry runs are documented in
 `docs/paper-scenario-runner.md`.
 

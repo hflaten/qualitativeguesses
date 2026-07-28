@@ -21,6 +21,8 @@ class SettingsTest(unittest.TestCase):
         self.assertFalse(settings.source_official_us_rss_enabled)
         self.assertFalse(settings.source_official_iran_rss_enabled)
         self.assertFalse(settings.source_norwegian_confirmation_rss_enabled)
+        self.assertFalse(settings.source_lseg_reuters_enabled)
+        self.assertFalse(settings.source_ap_media_api_enabled)
         self.assertFalse(settings.source_fixture_mode_enabled)
         self.assertEqual(settings.source_persistence_backend, "memory")
         self.assertEqual(settings.kalshi_env, "demo")
@@ -58,6 +60,8 @@ class SettingsTest(unittest.TestCase):
             "SOURCE_OFFICIAL_US_RSS_ENABLED": "true",
             "SOURCE_OFFICIAL_IRAN_RSS_ENABLED": "1",
             "SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED": "on",
+            "SOURCE_LSEG_REUTERS_ENABLED": "true",
+            "SOURCE_AP_MEDIA_API_ENABLED": "yes",
             "SOURCE_FIXTURE_MODE_ENABLED": "yes",
             "SOURCE_PERSISTENCE_BACKEND": "postgres",
             "KALSHI_ENV": "production",
@@ -82,6 +86,8 @@ class SettingsTest(unittest.TestCase):
         self.assertTrue(settings.source_official_us_rss_enabled)
         self.assertTrue(settings.source_official_iran_rss_enabled)
         self.assertTrue(settings.source_norwegian_confirmation_rss_enabled)
+        self.assertTrue(settings.source_lseg_reuters_enabled)
+        self.assertTrue(settings.source_ap_media_api_enabled)
         self.assertTrue(settings.source_fixture_mode_enabled)
         self.assertEqual(settings.source_persistence_backend, "postgres")
         self.assertEqual(settings.kalshi_env, "production")
@@ -100,6 +106,8 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.quote_timeout_seconds, 4)
         self.assertEqual(settings.public_status["quote_source"], "yahoo")
         self.assertEqual(settings.public_status["quote_instrument"], "EQNR.OL")
+        self.assertTrue(settings.public_status["source_lseg_reuters_enabled"])
+        self.assertTrue(settings.public_status["source_ap_media_api_enabled"])
         self.assertTrue(settings.watcher_run_once)
         self.assertEqual(settings.watcher_interval_seconds, 7)
 
