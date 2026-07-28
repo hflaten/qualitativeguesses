@@ -231,6 +231,7 @@ def _source_health(value: object, now: datetime) -> list[dict[str, object]]:
             {
                 "source": row.get("source"),
                 "source_class": row.get("source_class"),
+                "source_id": row.get("source_id"),
                 "status": row.get("status") or "unknown",
                 "last_event_at": _iso(last_event_at),
                 "last_checked_at": _iso(row.get("last_checked_at")),

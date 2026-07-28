@@ -71,6 +71,8 @@ class Settings:
     source_persistence_backend: str
     watcher_run_once: bool
     watcher_interval_seconds: int
+    watcher_backoff_initial_seconds: int
+    watcher_backoff_max_seconds: int
 
     @property
     def has_required_runtime_secrets(self) -> bool:
@@ -109,6 +111,8 @@ class Settings:
             "source_ap_media_api_enabled": self.source_ap_media_api_enabled,
             "source_fixture_mode_enabled": self.source_fixture_mode_enabled,
             "source_persistence_backend": self.source_persistence_backend,
+            "watcher_backoff_initial_seconds": self.watcher_backoff_initial_seconds,
+            "watcher_backoff_max_seconds": self.watcher_backoff_max_seconds,
             "kalshi_configured": bool(
                 self.kalshi_api_key_id and self.kalshi_private_key_pem
             ),
@@ -160,4 +164,6 @@ def load_settings() -> Settings:
         source_persistence_backend=_env("SOURCE_PERSISTENCE_BACKEND", "memory"),
         watcher_run_once=_env_bool("WATCHER_RUN_ONCE", False),
         watcher_interval_seconds=_env_int("WATCHER_INTERVAL_SECONDS", 30),
+        watcher_backoff_initial_seconds=_env_int("WATCHER_BACKOFF_INITIAL_SECONDS", 5),
+        watcher_backoff_max_seconds=_env_int("WATCHER_BACKOFF_MAX_SECONDS", 300),
     )

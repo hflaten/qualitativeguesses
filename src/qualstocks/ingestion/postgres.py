@@ -13,8 +13,10 @@ from qualstocks.ingestion.service import (
     IngestionOutcome,
     IngestionResult,
     SourceEventStatus,
+    _repository_health_status,
     _source_latency_seconds,
 )
+from qualstocks.sources.adapters import AdapterHealth
 
 
 class DatabaseClient(Protocol):
@@ -119,6 +121,9 @@ class PostgresSourceEventRepository:
 
     def record_source_seen(self, event: SourceEvent) -> None:
         self.client.upsert_source_health(_source_health_values(event))
+
+    def record_adapter_health(self, health: AdapterHealth) -> None:
+        self.client.upsert_source_health(_adapter_health_values(health))
 
     def record_ingestion_outcome(self, outcome: IngestionOutcome) -> None:
         self.client.insert_ingestion_outcome(_ingestion_outcome_values(outcome))
@@ -266,17 +271,25 @@ class PsycopgDatabaseClient:
             on conflict (source) do update set
               source_class = excluded.source_class,
               status = excluded.status,
-              last_event_at = excluded.last_event_at,
+              last_event_at = coalesce(excluded.last_event_at, source_health.last_event_at),
               last_checked_at = excluded.last_checked_at,
               last_error = excluded.last_error,
-              source_id = excluded.source_id,
-              source_tier = excluded.source_tier,
-              source_category = excluded.source_category,
-              reliability_score = excluded.reliability_score,
-              expected_latency_seconds = excluded.expected_latency_seconds,
-              licensing_class = excluded.licensing_class,
-              language = excluded.language,
-              translation_required = excluded.translation_required
+              source_id = coalesce(excluded.source_id, source_health.source_id),
+              source_tier = coalesce(excluded.source_tier, source_health.source_tier),
+              source_category = coalesce(excluded.source_category, source_health.source_category),
+              reliability_score = coalesce(
+                excluded.reliability_score,
+                source_health.reliability_score
+              ),
+              expected_latency_seconds = coalesce(
+                excluded.expected_latency_seconds,
+                source_health.expected_latency_seconds
+              ),
+              licensing_class = coalesce(excluded.licensing_class, source_health.licensing_class),
+              language = coalesce(excluded.language, source_health.language),
+              translation_required = (
+                excluded.translation_required or source_health.translation_required
+              )
             """,
             values,
         )
@@ -938,6 +951,25 @@ def _source_health_values(event: SourceEvent) -> dict[str, object]:
         "licensing_class": event.licensing_class.value if event.licensing_class else None,
         "language": event.language,
         "translation_required": event.translation_required,
+    }
+
+
+def _adapter_health_values(health: AdapterHealth) -> dict[str, object]:
+    return {
+        "source": health.source,
+        "source_class": health.source_class.value,
+        "status": _repository_health_status(health.status),
+        "last_event_at": health.last_event_at,
+        "last_checked_at": health.last_checked_at,
+        "last_error": health.last_error,
+        "source_id": health.source_id,
+        "source_tier": None,
+        "source_category": None,
+        "reliability_score": None,
+        "expected_latency_seconds": None,
+        "licensing_class": None,
+        "language": None,
+        "translation_required": False,
     }
 
 

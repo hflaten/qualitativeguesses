@@ -25,6 +25,9 @@ environment-specific:
 - Link each service to the GitHub repo and branch.
 - Set the service-specific start command.
 - Attach Doppler-synced shared variables to each service.
+- For `watcher-service`, include `WATCHER_BACKOFF_INITIAL_SECONDS` and
+  `WATCHER_BACKOFF_MAX_SECONDS` so polling-source retry behavior can be tuned
+  without code changes.
 - Configure health checks for API endpoints where Railway supports HTTP health
   checks.
 - Confirm deploy logs show startup validation output.

@@ -23,7 +23,9 @@
         "LIVE_TRADING_ENABLED",
         "MAX_OPEN_HYPOTHESES",
         "SOURCE_PERSISTENCE_BACKEND",
-        "SUPABASE_DB_URL"
+        "SUPABASE_DB_URL",
+        "WATCHER_BACKOFF_INITIAL_SECONDS",
+        "WATCHER_BACKOFF_MAX_SECONDS"
       ],
       "source_flags": [
         "SOURCE_OFFICIAL_US_RSS_ENABLED",
