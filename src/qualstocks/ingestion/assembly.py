@@ -24,6 +24,7 @@ from qualstocks.sources import (
     SourceAdapter,
     TextFetchClient,
     WebhookAdapter,
+    build_norwegian_confirmation_rss_adapters,
     build_official_iran_rss_adapters,
     build_official_us_rss_adapters,
 )
@@ -50,6 +51,10 @@ def build_source_adapters(
         adapters.extend(build_official_us_rss_adapters(fetch_client=fetch_client))
     if settings.source_official_iran_rss_enabled:
         adapters.extend(build_official_iran_rss_adapters(fetch_client=fetch_client))
+    if settings.source_norwegian_confirmation_rss_enabled:
+        adapters.extend(
+            build_norwegian_confirmation_rss_adapters(fetch_client=fetch_client)
+        )
     return tuple(adapters)
 
 

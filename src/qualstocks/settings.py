@@ -64,6 +64,7 @@ class Settings:
     quote_timeout_seconds: int
     source_official_us_rss_enabled: bool
     source_official_iran_rss_enabled: bool
+    source_norwegian_confirmation_rss_enabled: bool
     source_fixture_mode_enabled: bool
     source_persistence_backend: str
     watcher_run_once: bool
@@ -99,6 +100,9 @@ class Settings:
             "quote_stale_after_seconds": self.quote_stale_after_seconds,
             "source_official_us_rss_enabled": self.source_official_us_rss_enabled,
             "source_official_iran_rss_enabled": self.source_official_iran_rss_enabled,
+            "source_norwegian_confirmation_rss_enabled": (
+                self.source_norwegian_confirmation_rss_enabled
+            ),
             "source_fixture_mode_enabled": self.source_fixture_mode_enabled,
             "source_persistence_backend": self.source_persistence_backend,
             "kalshi_configured": bool(
@@ -142,6 +146,10 @@ def load_settings() -> Settings:
         quote_timeout_seconds=_env_int("QUOTE_TIMEOUT_SECONDS", 10),
         source_official_us_rss_enabled=_env_bool("SOURCE_OFFICIAL_US_RSS_ENABLED", False),
         source_official_iran_rss_enabled=_env_bool("SOURCE_OFFICIAL_IRAN_RSS_ENABLED", False),
+        source_norwegian_confirmation_rss_enabled=_env_bool(
+            "SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED",
+            False,
+        ),
         source_fixture_mode_enabled=_env_bool("SOURCE_FIXTURE_MODE_ENABLED", False),
         source_persistence_backend=_env("SOURCE_PERSISTENCE_BACKEND", "memory"),
         watcher_run_once=_env_bool("WATCHER_RUN_ONCE", False),

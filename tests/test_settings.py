@@ -20,6 +20,7 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.risk_live_max_order_aum_pct, 5)
         self.assertFalse(settings.source_official_us_rss_enabled)
         self.assertFalse(settings.source_official_iran_rss_enabled)
+        self.assertFalse(settings.source_norwegian_confirmation_rss_enabled)
         self.assertFalse(settings.source_fixture_mode_enabled)
         self.assertEqual(settings.source_persistence_backend, "memory")
         self.assertEqual(settings.kalshi_env, "demo")
@@ -56,6 +57,7 @@ class SettingsTest(unittest.TestCase):
         env = {
             "SOURCE_OFFICIAL_US_RSS_ENABLED": "true",
             "SOURCE_OFFICIAL_IRAN_RSS_ENABLED": "1",
+            "SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED": "on",
             "SOURCE_FIXTURE_MODE_ENABLED": "yes",
             "SOURCE_PERSISTENCE_BACKEND": "postgres",
             "KALSHI_ENV": "production",
@@ -79,6 +81,7 @@ class SettingsTest(unittest.TestCase):
 
         self.assertTrue(settings.source_official_us_rss_enabled)
         self.assertTrue(settings.source_official_iran_rss_enabled)
+        self.assertTrue(settings.source_norwegian_confirmation_rss_enabled)
         self.assertTrue(settings.source_fixture_mode_enabled)
         self.assertEqual(settings.source_persistence_backend, "postgres")
         self.assertEqual(settings.kalshi_env, "production")
