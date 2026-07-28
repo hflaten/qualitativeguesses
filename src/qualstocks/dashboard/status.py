@@ -27,6 +27,11 @@ def build_dashboard_status(
     model = read_model or {}
     active_hypothesis = _active_hypothesis(model.get("active_hypothesis"))
     paper_position = _paper_position(model.get("position"), model.get("valuation"))
+    event_timeline = build_event_timeline(
+        model,
+        active_hypothesis=active_hypothesis,
+        now=timestamp,
+    )
     system_state = _system_state(
         active_hypothesis=active_hypothesis,
         paper_position=paper_position,
@@ -45,8 +50,105 @@ def build_dashboard_status(
         "planned_exits": _list(model.get("planned_exits")),
         "risk_decisions": _list(model.get("risk_decisions")),
         "audit_timeline": _list(model.get("audit_timeline")),
+        "event_timeline": event_timeline,
         "services": _services(settings, services_error),
     }
+
+
+def build_event_timeline(
+    read_model: dict[str, object] | None = None,
+    *,
+    active_hypothesis: dict[str, object] | None = None,
+    now: datetime | None = None,
+    limit: int = 100,
+) -> list[dict[str, object]]:
+    model = read_model or {}
+    timeline: list[dict[str, object]] = []
+    if active_hypothesis is not None:
+        timeline.append(
+            _timeline_item(
+                timestamp=active_hypothesis.get("created_at"),
+                item_type="hypothesis_active",
+                severity="info",
+                source="strategy",
+                title=active_hypothesis.get("thesis") or "Active hypothesis",
+                entity_id=active_hypothesis.get("id"),
+            )
+        )
+    for row_value in _list(model.get("latest_events")):
+        row = _dict(row_value)
+        timeline.append(
+            _timeline_item(
+                timestamp=row.get("first_seen_at") or row.get("created_at"),
+                item_type="source_event",
+                severity="info",
+                source=row.get("source"),
+                title=row.get("title") or "Source event",
+                entity_id=row.get("id") or row.get("event_id"),
+            )
+        )
+    for row_value in _ingestion_rows(model):
+        row = _dict(row_value)
+        status = str(row.get("status") or "")
+        if status == "duplicate":
+            timeline.append(
+                _timeline_item(
+                    timestamp=row.get("timestamp") or row.get("first_seen_at"),
+                    item_type="duplicate_event",
+                    severity="info",
+                    source=row.get("source"),
+                    title=row.get("title") or "Duplicate event ignored",
+                    entity_id=row.get("event_id") or row.get("idempotency_key"),
+                )
+            )
+        elif status in {"malformed", "late", "unsupported", "rejected"}:
+            timeline.append(
+                _timeline_item(
+                    timestamp=row.get("timestamp") or row.get("first_seen_at"),
+                    item_type="rejected_event",
+                    severity="error",
+                    source=row.get("source"),
+                    title=row.get("title") or row.get("rejection_reason") or "Rejected event",
+                    entity_id=row.get("event_id") or row.get("idempotency_key"),
+                )
+            )
+    for row_value in _list(model.get("risk_decisions")):
+        row = _dict(row_value)
+        status = str(row.get("status") or "")
+        timeline.append(
+            _timeline_item(
+                timestamp=row.get("created_at") or row.get("timestamp"),
+                item_type="risk_decision",
+                severity="info" if status == "approved" else "warning",
+                source="risk_gate",
+                title=row.get("reason") or row.get("audit_action") or "Risk decision",
+                entity_id=row.get("id") or row.get("order_id") or row.get("event_id"),
+            )
+        )
+    for row_value in _list(model.get("audit_timeline")):
+        row = _dict(row_value)
+        timeline.append(
+            _timeline_item(
+                timestamp=row.get("timestamp") or row.get("created_at"),
+                item_type=str(row.get("type") or row.get("action") or "audit"),
+                severity=str(row.get("severity") or "info"),
+                source=row.get("source") or row.get("actor") or "system",
+                title=row.get("title") or row.get("summary") or "Audit event",
+                entity_id=(
+                    row.get("entity_id")
+                    or row.get("event_id")
+                    or row.get("order_id")
+                    or row.get("hypothesis_id")
+                ),
+            )
+        )
+    return sorted(
+        timeline,
+        key=lambda item: _datetime(item.get("timestamp")) or datetime.min.replace(
+            tzinfo=timezone.utc
+        ),
+        reverse=True,
+    )[:limit]
 
 
 def _system_state(
@@ -158,6 +260,33 @@ def _services(settings: Settings, services_error: str | None) -> dict[str, objec
         "openai": "configured" if settings.openai_api_key else "missing_config",
         "error": services_error,
     }
+
+
+def _timeline_item(
+    *,
+    timestamp: object,
+    item_type: str,
+    severity: str,
+    source: object,
+    title: object,
+    entity_id: object,
+) -> dict[str, object]:
+    return {
+        "timestamp": _iso(timestamp),
+        "type": item_type,
+        "severity": severity,
+        "source": source,
+        "title": title,
+        "entity_id": entity_id,
+    }
+
+
+def _ingestion_rows(model: dict[str, object]) -> list[object]:
+    rows: list[object] = []
+    rows.extend(_list(model.get("ingestion_results")))
+    rows.extend(_list(model.get("duplicate_events")))
+    rows.extend(_list(model.get("rejected_events")))
+    return rows
 
 
 def _empty_queue_status() -> dict[str, int]:
