@@ -41,6 +41,15 @@ from qualstocks.paper.quotes import (
     YahooChartQuoteProvider,
     build_quote_provider,
 )
+from qualstocks.paper.scenario import (
+    PaperTradingScenario,
+    PaperTradingScenarioResult,
+    PaperTradingScenarioRunner,
+    ScenarioClassification,
+    ScenarioSourceStep,
+    ScenarioTimerStep,
+    quote,
+)
 
 __all__ = [
     "BacktestCase",
@@ -63,14 +72,21 @@ __all__ = [
     "PaperOrder",
     "PaperOrderStatus",
     "PaperPosition",
+    "PaperTradingScenario",
+    "PaperTradingScenarioResult",
+    "PaperTradingScenarioRunner",
     "PricePoint",
     "QuoteProvider",
     "QuoteProviderConfig",
     "PortfolioValuation",
     "QuoteFreshness",
     "YahooChartQuoteProvider",
+    "ScenarioClassification",
+    "ScenarioSourceStep",
+    "ScenarioTimerStep",
     "build_quote_provider",
     "load_historical_backtest_dataset",
+    "quote",
     "run_exit_backtest",
     "run_historical_exit_backtest",
     "summarize_exit_backtests",
