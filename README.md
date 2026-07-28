@@ -30,6 +30,8 @@ Codex, Linear, and GitHub operating workflow is documented in
 
 Reusable Linear issue template is documented in `docs/linear-issue-template.md`.
 
+Linear and GitHub sync behavior is documented in `docs/linear-github-sync.md`.
+
 Initial platform boundary decisions are captured in
 `docs/adr/0001-platform-boundaries.md`.
 
