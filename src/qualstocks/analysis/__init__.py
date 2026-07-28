@@ -11,6 +11,7 @@ from qualstocks.analysis.worker import (
     EventAnalysisWorker,
     MalformedModelOutput,
     OpenAIJsonClassificationClient,
+    ReplayClassificationClient,
     classify_from_payload,
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "EventAnalysisWorker",
     "MalformedModelOutput",
     "OpenAIJsonClassificationClient",
+    "ReplayClassificationClient",
     "classify_from_payload",
 ]

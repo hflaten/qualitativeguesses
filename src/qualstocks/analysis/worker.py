@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Protocol
+from typing import Mapping, Protocol
 
 from qualstocks.domain import (
     Direction,
@@ -301,6 +301,34 @@ class OpenAIJsonClassificationClient:
             ],
         )
         return _json_from_response(response)
+
+
+@dataclass
+class ReplayClassificationClient:
+    responses_by_model: dict[str, list[dict[str, object] | Exception]]
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    @classmethod
+    def from_mapping(
+        cls,
+        responses_by_model: Mapping[str, tuple[dict[str, object] | Exception, ...]],
+    ) -> "ReplayClassificationClient":
+        return cls(
+            responses_by_model={
+                model: list(responses)
+                for model, responses in responses_by_model.items()
+            }
+        )
+
+    def classify(self, prompt: dict[str, object], *, model: str) -> dict[str, object]:
+        self.calls.append({"prompt": prompt, "model": model})
+        responses = self.responses_by_model.get(model)
+        if not responses:
+            raise AssertionError(f"unexpected model call: {model}")
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
 def classify_from_payload(event_id: str, payload: dict[str, object]) -> EventClassification:
