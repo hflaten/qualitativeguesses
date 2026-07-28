@@ -28,6 +28,9 @@ Railway service setup is documented in `docs/railway-services.md`.
 Production paper dry-run and smoke checks are documented in
 `docs/production-dry-run-runbook.md`.
 
+The future broker execution boundary is documented in
+`docs/broker-adapter-interface.md`.
+
 Codex, Linear, and GitHub operating workflow is documented in
 `docs/operating-workflow.md`.
 
