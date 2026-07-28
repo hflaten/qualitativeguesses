@@ -10,6 +10,7 @@ from typing import Protocol
 from qualstocks.domain import EventClassification
 from qualstocks.paper import PaperFill, PaperOrder, PaperPosition, PortfolioValuation
 from qualstocks.strategy import RiskGateDecision
+from qualstocks.strategy.orchestrator import OrchestratorAuditEvent
 
 
 class StrEnum(str, Enum):
@@ -65,6 +66,12 @@ class TradingDatabaseClient(Protocol):
 
     def fetch_dashboard_read_model(self, hypothesis_id: str | None = None) -> dict[str, object]:
         """Fetch latest persisted paper-trading state for dashboard rendering."""
+
+    def insert_audit_event(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert an audit event, or return None on duplicate."""
+
+    def fetch_audit_event_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        """Fetch an audit event by idempotency key."""
 
 
 @dataclass(frozen=True)
@@ -180,6 +187,35 @@ class PaperTradingRepository:
 
     def dashboard_read_model(self, hypothesis_id: str | None = None) -> dict[str, object]:
         return self.client.fetch_dashboard_read_model(hypothesis_id)
+
+    def persist_orchestrator_audit_event(
+        self,
+        event: OrchestratorAuditEvent,
+        *,
+        idempotency_key: str,
+    ) -> PersistenceResult:
+        row = self.client.insert_audit_event(
+            _audit_event_values(event, idempotency_key=idempotency_key)
+        )
+        status = PersistenceStatus.CREATED
+        if row is None:
+            row = self.client.fetch_audit_event_by_key(idempotency_key)
+            status = PersistenceStatus.DUPLICATE
+        return _result(row, status, "audit event")
+
+    def persist_orchestrator_audit_events(
+        self,
+        events: tuple[OrchestratorAuditEvent, ...],
+        *,
+        idempotency_prefix: str,
+    ) -> tuple[PersistenceResult, ...]:
+        return tuple(
+            self.persist_orchestrator_audit_event(
+                event,
+                idempotency_key=_audit_event_key(idempotency_prefix, event, index),
+            )
+            for index, event in enumerate(events)
+        )
 
 
 def _classification_values(
@@ -306,6 +342,33 @@ def _valuation_values(
         "quote_observed_at": valuation.quote_observed_at,
         "payload": _json(asdict(valuation)),
     }
+
+
+def _audit_event_values(
+    event: OrchestratorAuditEvent,
+    *,
+    idempotency_key: str,
+) -> dict[str, object]:
+    return {
+        "hypothesis_id": event.hypothesis_id,
+        "event_id": event.event_id,
+        "order_id": event.order_id,
+        "action": event.action,
+        "actor": "system",
+        "summary": event.summary,
+        "payload": _json(event.payload),
+        "idempotency_key": idempotency_key,
+        "created_at": event.created_at,
+    }
+
+
+def _audit_event_key(
+    prefix: str,
+    event: OrchestratorAuditEvent,
+    index: int,
+) -> str:
+    entity = event.event_id or event.order_id or event.hypothesis_id or "system"
+    return f"{prefix}:{index}:{event.action}:{entity}"
 
 
 def _result(
