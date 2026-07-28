@@ -6,16 +6,17 @@ production runtime for paper trading, not live trading.
 ## Startup Order
 
 1. Confirm Doppler is synced to the Railway Production environment.
-2. Deploy `api-service` from `main`.
-3. Open `GET /health` and confirm `ok: true`.
-4. Open `GET /api/status` and confirm the dashboard payload returns.
-5. Deploy `watcher-service`.
-6. Confirm watcher logs show startup validation and at least one configured
+2. Confirm service commands match `railway/service-templates.json`.
+3. Deploy `api-service` from `main`.
+4. Open `GET /health` and confirm `ok: true`.
+5. Open `GET /api/status` and confirm the dashboard payload returns.
+6. Deploy `watcher-service`.
+7. Confirm watcher logs show startup validation and at least one configured
    source adapter.
-7. Deploy `worker-service`.
-8. Confirm worker logs show startup validation and no missing OpenAI/Supabase
+8. Deploy `worker-service`.
+9. Confirm worker logs show startup validation and no missing OpenAI/Supabase
    errors.
-9. Run the smoke check from Railway or a Doppler-backed shell.
+10. Run the smoke check from Railway or a Doppler-backed shell.
 
 ## Required Secret And Config Checks
 

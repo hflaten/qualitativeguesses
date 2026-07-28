@@ -1,0 +1,56 @@
+{
+  "runtime": "python-3.12",
+  "services": [
+    {
+      "name": "api-service",
+      "start_command": "uvicorn qualstocks.main:app --host 0.0.0.0 --port $PORT",
+      "health_endpoints": ["/health", "/api/status", "/api/timeline"],
+      "required_variables": [
+        "APP_ENV",
+        "PAPER_TRADING_ONLY",
+        "LIVE_TRADING_ENABLED",
+        "MAX_OPEN_HYPOTHESES",
+        "SOURCE_PERSISTENCE_BACKEND",
+        "SUPABASE_DB_URL"
+      ]
+    },
+    {
+      "name": "watcher-service",
+      "start_command": "python -m qualstocks.watcher",
+      "required_variables": [
+        "APP_ENV",
+        "PAPER_TRADING_ONLY",
+        "LIVE_TRADING_ENABLED",
+        "MAX_OPEN_HYPOTHESES",
+        "SOURCE_PERSISTENCE_BACKEND",
+        "SUPABASE_DB_URL"
+      ],
+      "source_flags": [
+        "SOURCE_OFFICIAL_US_RSS_ENABLED",
+        "SOURCE_OFFICIAL_IRAN_RSS_ENABLED",
+        "SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED",
+        "SOURCE_LSEG_REUTERS_ENABLED",
+        "SOURCE_AP_MEDIA_API_ENABLED"
+      ]
+    },
+    {
+      "name": "worker-service",
+      "start_command": "python -m qualstocks.worker",
+      "required_variables": [
+        "APP_ENV",
+        "PAPER_TRADING_ONLY",
+        "LIVE_TRADING_ENABLED",
+        "MAX_OPEN_HYPOTHESES",
+        "SOURCE_PERSISTENCE_BACKEND",
+        "SUPABASE_DB_URL",
+        "OPENAI_API_KEY"
+      ]
+    }
+  ],
+  "manual_railway_steps": [
+    "Create three Railway services from the same GitHub repository.",
+    "Set each service start command from this template.",
+    "Attach Doppler-synced shared variables to every service.",
+    "Do not commit or paste secret values into this file."
+  ]
+}

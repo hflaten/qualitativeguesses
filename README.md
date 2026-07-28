@@ -25,6 +25,9 @@ V1 is paper trading only. Live trading must remain disabled unless a future expl
 
 Railway service setup is documented in `docs/railway-services.md`.
 
+Checked-in Railway service templates are documented in
+`docs/railway-service-templates.md`.
+
 Production paper dry-run and smoke checks are documented in
 `docs/production-dry-run-runbook.md`.
 
