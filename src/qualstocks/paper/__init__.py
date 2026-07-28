@@ -21,6 +21,15 @@ from qualstocks.paper.ledger import (
     PortfolioValuation,
     QuoteFreshness,
 )
+from qualstocks.paper.quotes import (
+    HttpxJsonFetchClient,
+    JsonFetchClient,
+    NullQuoteProvider,
+    QuoteProvider,
+    QuoteProviderConfig,
+    YahooChartQuoteProvider,
+    build_quote_provider,
+)
 
 __all__ = [
     "BacktestCase",
@@ -28,8 +37,11 @@ __all__ = [
     "ExitBacktestConfig",
     "ExitBacktestResult",
     "ExitVariantResult",
+    "HttpxJsonFetchClient",
+    "JsonFetchClient",
     "MarketQuote",
     "NorwegianConfirmationStatus",
+    "NullQuoteProvider",
     "PaperFill",
     "PaperLedger",
     "PaperLedgerConfig",
@@ -37,7 +49,11 @@ __all__ = [
     "PaperOrderStatus",
     "PaperPosition",
     "PricePoint",
+    "QuoteProvider",
+    "QuoteProviderConfig",
     "PortfolioValuation",
     "QuoteFreshness",
+    "YahooChartQuoteProvider",
+    "build_quote_provider",
     "run_exit_backtest",
 ]

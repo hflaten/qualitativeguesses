@@ -25,6 +25,11 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.kalshi_env, "demo")
         self.assertEqual(settings.kalshi_api_key_id, "")
         self.assertEqual(settings.kalshi_private_key_pem, "")
+        self.assertEqual(settings.quote_source, "yahoo")
+        self.assertEqual(settings.quote_instrument, "EQNR.OL")
+        self.assertEqual(settings.quote_yahoo_symbol, "EQNR.OL")
+        self.assertEqual(settings.quote_stale_after_seconds, 60)
+        self.assertEqual(settings.quote_timeout_seconds, 10)
         self.assertFalse(settings.watcher_run_once)
         self.assertEqual(settings.watcher_interval_seconds, 30)
 
@@ -61,6 +66,11 @@ class SettingsTest(unittest.TestCase):
             "RISK_MAX_EVENT_EXPOSURE_PCT": "60",
             "RISK_MAX_DAILY_LOSS_PCT": "4",
             "RISK_LIVE_MAX_ORDER_AUM_PCT": "3",
+            "QUOTE_SOURCE": "yahoo",
+            "QUOTE_INSTRUMENT": "EQNR.OL",
+            "QUOTE_YAHOO_SYMBOL": "EQNR.OL",
+            "QUOTE_STALE_AFTER_SECONDS": "15",
+            "QUOTE_TIMEOUT_SECONDS": "4",
             "WATCHER_RUN_ONCE": "on",
             "WATCHER_INTERVAL_SECONDS": "7",
         }
@@ -80,6 +90,13 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.risk_max_event_exposure_pct, 60)
         self.assertEqual(settings.risk_max_daily_loss_pct, 4)
         self.assertEqual(settings.risk_live_max_order_aum_pct, 3)
+        self.assertEqual(settings.quote_source, "yahoo")
+        self.assertEqual(settings.quote_instrument, "EQNR.OL")
+        self.assertEqual(settings.quote_yahoo_symbol, "EQNR.OL")
+        self.assertEqual(settings.quote_stale_after_seconds, 15)
+        self.assertEqual(settings.quote_timeout_seconds, 4)
+        self.assertEqual(settings.public_status["quote_source"], "yahoo")
+        self.assertEqual(settings.public_status["quote_instrument"], "EQNR.OL")
         self.assertTrue(settings.watcher_run_once)
         self.assertEqual(settings.watcher_interval_seconds, 7)
 
