@@ -35,6 +35,9 @@ Linear and GitHub sync behavior is documented in `docs/linear-github-sync.md`.
 Initial platform boundary decisions are captured in
 `docs/adr/0001-platform-boundaries.md`.
 
+The first source predictive-power research dataset is documented in
+`docs/source-predictive-power-dataset.md`.
+
 ## Local Setup
 
 Install Python 3.12, then:
