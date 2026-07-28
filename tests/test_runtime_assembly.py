@@ -94,6 +94,21 @@ class RuntimeAssemblyTest(unittest.TestCase):
             ("dod_rss", "centcom_rss", "tasnim", "e24"),
         )
 
+    def test_licensed_feed_flags_select_inert_paid_feed_adapters(self):
+        settings = settings_from_env(
+            {
+                "SOURCE_LSEG_REUTERS_ENABLED": "true",
+                "SOURCE_AP_MEDIA_API_ENABLED": "true",
+            }
+        )
+
+        assembly = build_runtime_assembly(settings)
+
+        self.assertEqual(
+            assembly.adapter_source_ids,
+            ("reuters_lseg_news", "ap_media_api"),
+        )
+
     def test_runtime_run_once_ingests_fixture_event(self):
         settings = settings_from_env({"SOURCE_FIXTURE_MODE_ENABLED": "true"})
         assembly = build_runtime_assembly(settings)

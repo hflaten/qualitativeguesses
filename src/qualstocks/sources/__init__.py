@@ -75,11 +75,20 @@ from qualstocks.sources.kalshi import (
     KalshiMarket,
     KalshiSignalConfig,
 )
+from qualstocks.sources.licensed_feeds import (
+    ApMediaEventNormalizer,
+    ApMediaLicensedFeedAdapter,
+    LicensedFeedNormalizerConfig,
+    LsegReutersEventNormalizer,
+    LsegReutersLicensedFeedAdapter,
+)
 
 __all__ = [
     "AdapterHealth",
     "AdapterHealthStatus",
     "AdapterKind",
+    "ApMediaEventNormalizer",
+    "ApMediaLicensedFeedAdapter",
     "BaseSourceAdapter",
     "ControlSignalAction",
     "ControlSignalKind",
@@ -101,6 +110,9 @@ __all__ = [
     "KalshiMarket",
     "KalshiSignalConfig",
     "KeywordFilter",
+    "LicensedFeedNormalizerConfig",
+    "LsegReutersEventNormalizer",
+    "LsegReutersLicensedFeedAdapter",
     "NORWEGIAN_CONFIRMATION_KEYWORDS",
     "NorwegianSourceAccessNote",
     "OFFICIAL_US_KEYWORDS",
