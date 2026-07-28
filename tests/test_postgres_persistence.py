@@ -18,6 +18,7 @@ class FakeDatabaseClient:
         self.events_by_key = {}
         self.source_health = {}
         self.analysis_jobs = []
+        self.ingestion_outcomes = []
         self.insert_source_event_calls = []
 
     def insert_source_event(self, values):
@@ -34,6 +35,11 @@ class FakeDatabaseClient:
 
     def upsert_source_health(self, values):
         self.source_health[values["source"]] = values
+
+    def insert_ingestion_outcome(self, values):
+        row = {"id": f"outcome-{len(self.ingestion_outcomes) + 1}", **values}
+        self.ingestion_outcomes.append(row)
+        return row
 
     def insert_analysis_job(self, values):
         self.analysis_jobs.append(values)
@@ -70,6 +76,9 @@ class PostgresPersistenceTest(unittest.TestCase):
         self.assertEqual(result.status, SourceEventStatus.CREATED)
         self.assertIsNotNone(result.analysis_job)
         self.assertEqual(len(client.events_by_key), 1)
+        self.assertEqual(len(client.ingestion_outcomes), 1)
+        self.assertEqual(client.ingestion_outcomes[0]["status"], "created")
+        self.assertEqual(client.ingestion_outcomes[0]["event_id"], result.ingested_event.event.id)
         self.assertEqual(len(client.analysis_jobs), 1)
         job_payload = json.loads(client.analysis_jobs[0]["payload"])
         self.assertEqual(job_payload["source_tier"], "trigger")
@@ -90,6 +99,14 @@ class PostgresPersistenceTest(unittest.TestCase):
         self.assertEqual(second.status, SourceEventStatus.DUPLICATE)
         self.assertEqual(len(client.events_by_key), 1)
         self.assertEqual(len(client.analysis_jobs), 1)
+        self.assertEqual(
+            [outcome["status"] for outcome in client.ingestion_outcomes],
+            ["created", "duplicate"],
+        )
+        self.assertEqual(
+            client.ingestion_outcomes[1]["event_id"],
+            first.ingested_event.event.id,
+        )
 
     def test_source_event_values_include_metadata_and_json_payload(self):
         client = FakeDatabaseClient()

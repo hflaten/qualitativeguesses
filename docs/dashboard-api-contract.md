@@ -225,6 +225,7 @@ Chronological operator-readable events:
 
 Unified operator timeline derived from source ingestion, duplicate/rejected
 ingestion results, active hypothesis state, risk decisions, and audit entries.
+Duplicate and rejected rows come from the durable `ingestion_outcomes` table.
 
 ```json
 {
