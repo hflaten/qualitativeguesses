@@ -68,6 +68,8 @@ def service_health_payload(settings: Settings) -> dict[str, object]:
         or settings.source_official_us_rss_enabled
         or settings.source_official_iran_rss_enabled
         or settings.source_norwegian_confirmation_rss_enabled
+        or settings.source_lseg_reuters_enabled
+        or settings.source_ap_media_api_enabled
     )
     ai_worker_configured = (
         settings.source_persistence_backend == "postgres"
