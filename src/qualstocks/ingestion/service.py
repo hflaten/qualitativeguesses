@@ -6,6 +6,13 @@ from enum import Enum
 from typing import Protocol
 
 from qualstocks.domain import SourceClass, SourceEvent
+from qualstocks.ingestion.contract import (
+    AdapterContractConfig,
+    AdapterEventErrorCode,
+    RawAdapterEvent,
+    normalize_raw_adapter_event,
+    validate_raw_adapter_event,
+)
 from qualstocks.ingestion.idempotency import build_idempotency_key
 
 
@@ -84,6 +91,27 @@ class IngestionService:
     analysis_queue: AnalysisQueue
     validation_config: IngestionValidationConfig = IngestionValidationConfig()
 
+    async def ingest_raw(self, raw_event: RawAdapterEvent) -> IngestionResult:
+        contract_config = AdapterContractConfig(
+            supported_instruments=self.validation_config.supported_instruments,
+            max_source_event_age=self.validation_config.max_source_event_age,
+        )
+        validation = validate_raw_adapter_event(raw_event, contract_config)
+        if not validation.valid:
+            error = validation.errors[0]
+            return IngestionResult(
+                status=_status_from_adapter_error(error.code),
+                ingested_event=None,
+                analysis_job=None,
+                rejection_reason=error.reason,
+            )
+
+        normalized = normalize_raw_adapter_event(raw_event, contract_config)
+        return await self._ingest_validated(
+            normalized.event,
+            idempotency_key=normalized.idempotency_key,
+        )
+
     async def ingest(self, event: SourceEvent) -> IngestionResult:
         rejection = _source_event_rejection(event, self.validation_config)
         if rejection is not None:
@@ -95,7 +123,17 @@ class IngestionService:
                 rejection_reason=reason,
             )
 
-        idempotency_key = build_idempotency_key(event)
+        return await self._ingest_validated(
+            event,
+            idempotency_key=build_idempotency_key(event),
+        )
+
+    async def _ingest_validated(
+        self,
+        event: SourceEvent,
+        *,
+        idempotency_key: str,
+    ) -> IngestionResult:
         result = self.repository.persist_source_event(event, idempotency_key)
         self.repository.record_source_seen(event)
         if result.created:
@@ -180,3 +218,11 @@ def _source_event_rejection(
         if event_age > config.max_source_event_age:
             return SourceEventStatus.LATE, "source event is too old"
     return None
+
+
+def _status_from_adapter_error(code: AdapterEventErrorCode) -> SourceEventStatus:
+    if code == AdapterEventErrorCode.LATE:
+        return SourceEventStatus.LATE
+    if code == AdapterEventErrorCode.UNSUPPORTED:
+        return SourceEventStatus.UNSUPPORTED
+    return SourceEventStatus.MALFORMED

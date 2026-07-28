@@ -37,6 +37,11 @@ V1 supports `EQNR.OL` as the default instrument. Unsupported instruments are
 rejected before persistence so they cannot enqueue AI analysis or create a
 hypothesis.
 
+Adapters should hand provider-shaped payloads to `IngestionService.ingest_raw()`.
+That service method owns raw validation, normalization, idempotency-key handling,
+persistence, duplicate detection, and analysis queueing. Adapters should not
+reimplement those steps locally.
+
 ## Validation and errors
 
 Adapters should validate raw events before normalization. The ingestion service
