@@ -57,6 +57,11 @@ class Settings:
     kalshi_env: str
     kalshi_api_key_id: str
     kalshi_private_key_pem: str
+    quote_source: str
+    quote_instrument: str
+    quote_yahoo_symbol: str
+    quote_stale_after_seconds: int
+    quote_timeout_seconds: int
     source_official_us_rss_enabled: bool
     source_official_iran_rss_enabled: bool
     source_fixture_mode_enabled: bool
@@ -89,6 +94,9 @@ class Settings:
             "risk_max_daily_loss_pct": self.risk_max_daily_loss_pct,
             "risk_live_max_order_aum_pct": self.risk_live_max_order_aum_pct,
             "runtime_secrets_present": self.has_required_runtime_secrets,
+            "quote_source": self.quote_source,
+            "quote_instrument": self.quote_instrument,
+            "quote_stale_after_seconds": self.quote_stale_after_seconds,
             "source_official_us_rss_enabled": self.source_official_us_rss_enabled,
             "source_official_iran_rss_enabled": self.source_official_iran_rss_enabled,
             "source_fixture_mode_enabled": self.source_fixture_mode_enabled,
@@ -127,6 +135,11 @@ def load_settings() -> Settings:
         kalshi_env=_env("KALSHI_ENV", "demo"),
         kalshi_api_key_id=_env("KALSHI_API_KEY_ID"),
         kalshi_private_key_pem=_env("KALSHI_PRIVATE_KEY_PEM"),
+        quote_source=_env("QUOTE_SOURCE", "yahoo"),
+        quote_instrument=_env("QUOTE_INSTRUMENT", "EQNR.OL"),
+        quote_yahoo_symbol=_env("QUOTE_YAHOO_SYMBOL", "EQNR.OL"),
+        quote_stale_after_seconds=_env_int("QUOTE_STALE_AFTER_SECONDS", 60),
+        quote_timeout_seconds=_env_int("QUOTE_TIMEOUT_SECONDS", 10),
         source_official_us_rss_enabled=_env_bool("SOURCE_OFFICIAL_US_RSS_ENABLED", False),
         source_official_iran_rss_enabled=_env_bool("SOURCE_OFFICIAL_IRAN_RSS_ENABLED", False),
         source_fixture_mode_enabled=_env_bool("SOURCE_FIXTURE_MODE_ENABLED", False),
