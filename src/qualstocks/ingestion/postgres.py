@@ -20,6 +20,15 @@ from qualstocks.sources.adapters import AdapterHealth
 
 
 class DatabaseClient(Protocol):
+    def insert_hypothesis(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert a hypothesis and return the row, or None on duplicate."""
+
+    def fetch_hypothesis(self, hypothesis_id: str) -> dict[str, object] | None:
+        """Fetch a hypothesis by id."""
+
+    def fetch_active_hypothesis(self) -> dict[str, object] | None:
+        """Fetch the latest open hypothesis."""
+
     def insert_source_event(self, values: dict[str, object]) -> dict[str, object] | None:
         """Insert a source event and return the inserted row, or None on duplicate."""
 
@@ -171,6 +180,65 @@ class PostgresAnalysisQueue:
 @dataclass(frozen=True)
 class PsycopgDatabaseClient:
     db_url: str
+
+    def insert_hypothesis(self, values: dict[str, object]) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            insert into hypotheses (
+              id,
+              state,
+              thesis,
+              direction,
+              confidence,
+              source_event_ids,
+              norwegian_confirmation_at,
+              created_at,
+              updated_at
+            )
+            values (
+              %(id)s,
+              %(state)s,
+              %(thesis)s,
+              %(direction)s,
+              %(confidence)s,
+              %(source_event_ids)s::uuid[],
+              %(norwegian_confirmation_at)s,
+              %(created_at)s,
+              %(updated_at)s
+            )
+            on conflict (id) do nothing
+            returning *
+            """,
+            values,
+        )
+
+    def fetch_hypothesis(self, hypothesis_id: str) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select *
+            from hypotheses
+            where id = %(hypothesis_id)s
+            """,
+            {"hypothesis_id": hypothesis_id},
+        )
+
+    def fetch_active_hypothesis(self) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select *
+            from hypotheses
+            where state in (
+              'candidate',
+              'active',
+              'reinforced',
+              'confirmed_by_norwegian_source',
+              'exiting'
+            )
+            order by updated_at desc
+            limit 1
+            """,
+            {},
+        )
 
     def insert_source_event(self, values: dict[str, object]) -> dict[str, object] | None:
         return self._fetchone(
