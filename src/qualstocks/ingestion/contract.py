@@ -76,6 +76,12 @@ def validate_raw_adapter_event(
                 "instrument is not supported",
             )
         )
+    title = _string_field(raw_event.payload, "title") or _string_field(
+        raw_event.payload,
+        "headline",
+    )
+    if not title:
+        errors.append(AdapterEventValidationError(AdapterEventErrorCode.MALFORMED, "title is required"))
     if raw_event.source_timestamp is not None:
         event_age = raw_event.first_seen_at - raw_event.source_timestamp
         if event_age > config.max_source_event_age:
