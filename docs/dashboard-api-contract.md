@@ -151,10 +151,24 @@ Null when no paper position is open. Otherwise:
   ],
   "quantity": 100,
   "average_entry_price": 312.45,
-  "unrealized_pnl": 0,
-  "realized_pnl": 0
+  "last_price": 330.12,
+  "market_value": 33012,
+  "unrealized_pnl": 1767,
+  "unrealized_pnl_pct": 5.65,
+  "realized_pnl": 0,
+  "total_pnl": 1767,
+  "total_pnl_pct": 1.77,
+  "quote_freshness": "fresh",
+  "quote_source": "yahoo:EQNR.OL",
+  "quote_observed_at": "2026-07-27T12:08:00Z"
 }
 ```
+
+Allowed quote freshness values:
+
+- `fresh`
+- `stale`
+- `missing`
 
 ### `planned_exits`
 
@@ -323,4 +337,3 @@ Chronological operator-readable events:
 - Do not expose secrets, raw signed webhook headers, or service-role details.
 - Prefer null over invented values when a field is not known yet.
 - Keep V1 explicitly paper trading only in every response.
-

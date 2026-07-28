@@ -549,6 +549,19 @@ class PsycopgDatabaseClient:
             """
             select
               (
+                select to_jsonb(h)
+                from hypotheses h
+                where h.state in (
+                  'candidate',
+                  'active',
+                  'reinforced',
+                  'confirmed_by_norwegian_source',
+                  'exiting'
+                )
+                order by h.updated_at desc
+                limit 1
+              ) as active_hypothesis,
+              (
                 select to_jsonb(p)
                 from positions p
                 where (%(hypothesis_id)s::uuid is null or p.hypothesis_id = %(hypothesis_id)s)
@@ -561,10 +574,78 @@ class PsycopgDatabaseClient:
                 where (%(hypothesis_id)s::uuid is null or v.hypothesis_id = %(hypothesis_id)s)
                 order by v.created_at desc
                 limit 1
-              ) as valuation
+              ) as valuation,
+              coalesce(
+                (
+                  select jsonb_agg(to_jsonb(s) order by s.last_checked_at desc)
+                  from source_health s
+                ),
+                '[]'::jsonb
+              ) as source_health,
+              coalesce(
+                (
+                  select jsonb_agg(to_jsonb(e) order by e.first_seen_at desc)
+                  from (
+                    select id, source, source_class, title, url, first_seen_at, source_id
+                    from source_events
+                    order by first_seen_at desc
+                    limit 20
+                  ) e
+                ),
+                '[]'::jsonb
+              ) as latest_events,
+              (
+                select jsonb_build_object(
+                  'queued', count(*) filter (where status = 'queued'),
+                  'running', count(*) filter (where status = 'running'),
+                  'failed', count(*) filter (where status = 'failed')
+                )
+                from analysis_jobs
+              ) as queue_status,
+              coalesce(
+                (
+                  select jsonb_agg(to_jsonb(r) order by r.created_at desc)
+                  from (
+                    select id, status, reason, audit_action, hypothesis_id, event_id, created_at
+                    from risk_decisions
+                    where (
+                      %(hypothesis_id)s::uuid is null
+                      or hypothesis_id = %(hypothesis_id)s
+                    )
+                    order by created_at desc
+                    limit 20
+                  ) r
+                ),
+                '[]'::jsonb
+              ) as risk_decisions,
+              coalesce(
+                (
+                  select jsonb_agg(to_jsonb(a) order by a.created_at desc)
+                  from (
+                    select id, action, summary, actor, hypothesis_id, event_id, created_at
+                    from audit_log
+                    where (
+                      %(hypothesis_id)s::uuid is null
+                      or hypothesis_id = %(hypothesis_id)s
+                    )
+                    order by created_at desc
+                    limit 30
+                  ) a
+                ),
+                '[]'::jsonb
+              ) as audit_timeline
             """,
             {"hypothesis_id": hypothesis_id},
-        ) or {"position": None, "valuation": None}
+        ) or {
+            "active_hypothesis": None,
+            "position": None,
+            "valuation": None,
+            "source_health": [],
+            "latest_events": [],
+            "queue_status": None,
+            "risk_decisions": [],
+            "audit_timeline": [],
+        }
 
     def _fetchone(self, query: str, values: dict[str, object]) -> dict[str, object] | None:
         import psycopg
