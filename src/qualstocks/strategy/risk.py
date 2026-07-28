@@ -25,7 +25,11 @@ class RiskDecisionStatus(StrEnum):
 @dataclass(frozen=True)
 class RiskGateConfig:
     mode: TradingMode = TradingMode.PAPER
+    deployment_environment: str = "development"
+    live_environment_name: str = "production"
     live_trading_enabled: bool = False
+    live_trading_acknowledged: bool = False
+    kill_switch_enabled: bool = False
     max_single_name_exposure_pct: int = 100
     max_event_exposure_pct: int = 100
     max_daily_loss_pct: int = 5
@@ -44,6 +48,10 @@ class RiskGateConfig:
                 raise ValueError(f"{name} cannot be negative")
         if self.max_open_hypotheses < 1:
             raise ValueError("max_open_hypotheses must be at least 1")
+        if not self.deployment_environment:
+            raise ValueError("deployment_environment is required")
+        if not self.live_environment_name:
+            raise ValueError("live_environment_name is required")
 
 
 @dataclass(frozen=True)
@@ -124,9 +132,15 @@ class RiskGate:
         independent_source_confirmation: bool,
         materially_new_information: bool,
     ) -> str | None:
+        if self.config.kill_switch_enabled:
+            return "Kill switch is enabled; new buy intents are rejected."
         if self.config.mode == TradingMode.LIVE and not self.config.live_trading_enabled:
             return "Live trading is disabled by default."
         if self.config.mode == TradingMode.LIVE:
+            if self.config.deployment_environment != self.config.live_environment_name:
+                return "Live trading requires the configured live deployment environment."
+            if not self.config.live_trading_acknowledged:
+                return "Live trading requires manual acknowledgement."
             if order_intent.aum_pct > self.config.live_max_order_aum_pct:
                 return "Live order exceeds live-mode max order size."
         if snapshot.forced_liquidation_required:
@@ -166,10 +180,22 @@ class RiskGate:
             audit_payload={
                 "status": status.value,
                 "reason": reason,
+                "mode": self.config.mode.value,
+                "deployment_environment": self.config.deployment_environment,
+                "live_trading_enabled": self.config.live_trading_enabled,
+                "live_trading_acknowledged": self.config.live_trading_acknowledged,
+                "kill_switch_enabled": self.config.kill_switch_enabled,
                 "side": order_intent.side.value,
                 "instrument": order_intent.instrument,
                 "aum_pct": order_intent.aum_pct,
                 "source_event_id": order_intent.source_event_id,
                 "order_reason": order_intent.reason,
+                "limits": {
+                    "max_single_name_exposure_pct": self.config.max_single_name_exposure_pct,
+                    "max_event_exposure_pct": self.config.max_event_exposure_pct,
+                    "max_daily_loss_pct": self.config.max_daily_loss_pct,
+                    "max_open_hypotheses": self.config.max_open_hypotheses,
+                    "live_max_order_aum_pct": self.config.live_max_order_aum_pct,
+                },
             },
         )

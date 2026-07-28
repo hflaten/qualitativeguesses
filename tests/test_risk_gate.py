@@ -27,6 +27,12 @@ class RiskGateTest(unittest.TestCase):
         self.assertEqual(decision.status, RiskDecisionStatus.APPROVED)
         self.assertEqual(decision.audit_action, "risk_decision_approved")
         self.assertEqual(decision.audit_payload["source_event_id"], "event-1")
+        self.assertEqual(decision.audit_payload["mode"], "paper")
+        self.assertFalse(decision.audit_payload["kill_switch_enabled"])
+        self.assertEqual(
+            decision.audit_payload["limits"]["max_open_hypotheses"],
+            1,
+        )
 
     def test_live_mode_rejects_when_live_trading_disabled(self):
         gate = RiskGate(RiskGateConfig(mode=TradingMode.LIVE))
@@ -44,7 +50,9 @@ class RiskGateTest(unittest.TestCase):
         gate = RiskGate(
             RiskGateConfig(
                 mode=TradingMode.LIVE,
+                deployment_environment="production",
                 live_trading_enabled=True,
+                live_trading_acknowledged=True,
                 live_max_order_aum_pct=5,
             )
         )
@@ -56,6 +64,60 @@ class RiskGateTest(unittest.TestCase):
 
         self.assertFalse(decision.approved)
         self.assertEqual(decision.reason, "Live order exceeds live-mode max order size.")
+
+    def test_live_mode_requires_live_environment_and_manual_acknowledgement(self):
+        wrong_environment = RiskGate(
+            RiskGateConfig(
+                mode=TradingMode.LIVE,
+                deployment_environment="staging",
+                live_trading_enabled=True,
+                live_trading_acknowledged=True,
+            )
+        )
+        missing_acknowledgement = RiskGate(
+            RiskGateConfig(
+                mode=TradingMode.LIVE,
+                deployment_environment="production",
+                live_trading_enabled=True,
+            )
+        )
+
+        wrong_environment_decision = wrong_environment.evaluate_order(
+            order_intent=self._buy(5),
+            snapshot=PortfolioRiskSnapshot(),
+            active_hypothesis=None,
+        )
+        missing_acknowledgement_decision = missing_acknowledgement.evaluate_order(
+            order_intent=self._buy(5),
+            snapshot=PortfolioRiskSnapshot(),
+            active_hypothesis=None,
+        )
+
+        self.assertFalse(wrong_environment_decision.approved)
+        self.assertEqual(
+            wrong_environment_decision.reason,
+            "Live trading requires the configured live deployment environment.",
+        )
+        self.assertFalse(missing_acknowledgement_decision.approved)
+        self.assertEqual(
+            missing_acknowledgement_decision.reason,
+            "Live trading requires manual acknowledgement.",
+        )
+
+    def test_kill_switch_rejects_new_buys_and_is_audited(self):
+        gate = RiskGate(RiskGateConfig(kill_switch_enabled=True))
+        decision = gate.evaluate_order(
+            order_intent=self._buy(10),
+            snapshot=PortfolioRiskSnapshot(),
+            active_hypothesis=self._hypothesis(),
+        )
+
+        self.assertFalse(decision.approved)
+        self.assertEqual(
+            decision.reason,
+            "Kill switch is enabled; new buy intents are rejected.",
+        )
+        self.assertTrue(decision.audit_payload["kill_switch_enabled"])
 
     def test_rejects_single_name_exposure_breach(self):
         gate = RiskGate(RiskGateConfig(max_single_name_exposure_pct=60))
@@ -151,6 +213,12 @@ class RiskGateTest(unittest.TestCase):
     def test_config_rejects_zero_open_hypotheses_limit(self):
         with self.assertRaises(ValueError):
             RiskGateConfig(max_open_hypotheses=0)
+
+    def test_config_requires_environment_names(self):
+        with self.assertRaisesRegex(ValueError, "deployment_environment is required"):
+            RiskGateConfig(deployment_environment="")
+        with self.assertRaisesRegex(ValueError, "live_environment_name is required"):
+            RiskGateConfig(live_environment_name="")
 
     def _buy(self, aum_pct: int, *, source_event_id: str = "event-1") -> PaperOrderIntent:
         return PaperOrderIntent(
