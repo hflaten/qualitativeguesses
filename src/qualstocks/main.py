@@ -3,6 +3,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
+from qualstocks.dashboard import build_dashboard_status
+from qualstocks.ingestion import PsycopgDatabaseClient
 from qualstocks.settings import load_settings
 
 app = FastAPI(title="Qualitative Guesses", version="0.1.0")
@@ -17,19 +19,19 @@ def health() -> dict[str, object]:
 @app.get("/api/status")
 def api_status() -> dict[str, object]:
     settings = load_settings()
-    return {
-        "system_state": "listening",
-        "active_hypothesis": None,
-        "paper_trading_only": settings.paper_trading_only,
-        "max_open_hypotheses": settings.max_open_hypotheses,
-        "services": {
-            "api": "online",
-            "watcher": "not_connected",
-            "worker": "not_connected",
-            "supabase": "configured" if settings.supabase_url else "missing_config",
-            "openai": "configured" if settings.openai_api_key else "missing_config",
-        },
-    }
+    read_model: dict[str, object] | None = None
+    services_error = None
+    if settings.source_persistence_backend == "postgres" and settings.supabase_db_url:
+        try:
+            client = PsycopgDatabaseClient(settings.supabase_db_url)
+            read_model = client.fetch_dashboard_read_model()
+        except Exception as exc:
+            services_error = f"dashboard read model unavailable: {exc}"
+    return build_dashboard_status(
+        settings,
+        read_model=read_model,
+        services_error=services_error,
+    )
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -94,4 +96,3 @@ def dashboard() -> str:
       </body>
     </html>
     """
-
