@@ -28,6 +28,39 @@ class DatabaseClient(Protocol):
     def insert_analysis_job(self, values: dict[str, object]) -> dict[str, object]:
         """Insert an analysis job and return the inserted row."""
 
+    def insert_event_classification(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert an event classification and return the row, or None on duplicate."""
+
+    def fetch_event_classification(self, event_id: str, model: str) -> dict[str, object] | None:
+        """Fetch an existing event classification by event and model."""
+
+    def insert_risk_decision(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert a risk decision and return the row, or None on duplicate."""
+
+    def fetch_risk_decision_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        """Fetch an existing risk decision by idempotency key."""
+
+    def insert_paper_order(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert a paper order and return the row, or None on duplicate."""
+
+    def fetch_paper_order_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        """Fetch an existing paper order by idempotency key."""
+
+    def insert_paper_fill(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert a paper fill and return the row, or None on duplicate."""
+
+    def fetch_paper_fill_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        """Fetch an existing paper fill by idempotency key."""
+
+    def upsert_position_snapshot(self, values: dict[str, object]) -> dict[str, object]:
+        """Upsert a position snapshot and return the row."""
+
+    def insert_valuation_snapshot(self, values: dict[str, object]) -> dict[str, object]:
+        """Insert a paper valuation snapshot and return the row."""
+
+    def fetch_dashboard_read_model(self, hypothesis_id: str | None = None) -> dict[str, object]:
+        """Fetch latest paper state for dashboard rendering."""
+
 
 @dataclass(frozen=True)
 class PostgresSourceEventRepository:
@@ -243,6 +276,295 @@ class PsycopgDatabaseClient:
         if row is None:
             raise RuntimeError("analysis job insert returned no row")
         return row
+
+    def insert_event_classification(self, values: dict[str, object]) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            insert into event_classifications (
+              event_id,
+              model,
+              relevant_to_equinor,
+              direction,
+              confidence,
+              event_type,
+              reasoning_summary,
+              is_reinforcement,
+              is_contradiction,
+              raw_response
+            )
+            values (
+              %(event_id)s,
+              %(model)s,
+              %(relevant_to_equinor)s,
+              %(direction)s,
+              %(confidence)s,
+              %(event_type)s,
+              %(reasoning_summary)s,
+              %(is_reinforcement)s,
+              %(is_contradiction)s,
+              %(raw_response)s::jsonb
+            )
+            on conflict (event_id, model) do nothing
+            returning id, created_at
+            """,
+            values,
+        )
+
+    def fetch_event_classification(self, event_id: str, model: str) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select id, created_at
+            from event_classifications
+            where event_id = %(event_id)s and model = %(model)s
+            """,
+            {"event_id": event_id, "model": model},
+        )
+
+    def insert_risk_decision(self, values: dict[str, object]) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            insert into risk_decisions (
+              hypothesis_id,
+              event_id,
+              order_id,
+              idempotency_key,
+              status,
+              reason,
+              audit_action,
+              payload
+            )
+            values (
+              %(hypothesis_id)s,
+              %(event_id)s,
+              %(order_id)s,
+              %(idempotency_key)s,
+              %(status)s,
+              %(reason)s,
+              %(audit_action)s,
+              %(payload)s::jsonb
+            )
+            on conflict (idempotency_key) do nothing
+            returning id, created_at
+            """,
+            values,
+        )
+
+    def fetch_risk_decision_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select id, created_at
+            from risk_decisions
+            where idempotency_key = %(idempotency_key)s
+            """,
+            {"idempotency_key": idempotency_key},
+        )
+
+    def insert_paper_order(self, values: dict[str, object]) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            insert into paper_orders (
+              id,
+              hypothesis_id,
+              side,
+              instrument,
+              aum_pct,
+              status,
+              reason,
+              source_event_id,
+              idempotency_key,
+              reject_reason,
+              created_at,
+              updated_at
+            )
+            values (
+              %(id)s,
+              %(hypothesis_id)s,
+              %(side)s,
+              %(instrument)s,
+              %(aum_pct)s,
+              %(status)s,
+              %(reason)s,
+              %(source_event_id)s,
+              %(idempotency_key)s,
+              %(reject_reason)s,
+              %(created_at)s,
+              %(updated_at)s
+            )
+            on conflict (idempotency_key) do nothing
+            returning id, created_at
+            """,
+            values,
+        )
+
+    def fetch_paper_order_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select id, created_at
+            from paper_orders
+            where idempotency_key = %(idempotency_key)s
+            """,
+            {"idempotency_key": idempotency_key},
+        )
+
+    def insert_paper_fill(self, values: dict[str, object]) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            insert into paper_fills (
+              id,
+              order_id,
+              side,
+              instrument,
+              fill_price,
+              quantity,
+              notional,
+              fees,
+              idempotency_key,
+              filled_at
+            )
+            values (
+              %(id)s,
+              %(order_id)s,
+              %(side)s,
+              %(instrument)s,
+              %(fill_price)s,
+              %(quantity)s,
+              %(notional)s,
+              %(fees)s,
+              %(idempotency_key)s,
+              %(filled_at)s
+            )
+            on conflict (idempotency_key) do nothing
+            returning id, filled_at
+            """,
+            values,
+        )
+
+    def fetch_paper_fill_by_key(self, idempotency_key: str) -> dict[str, object] | None:
+        return self._fetchone(
+            """
+            select id, filled_at
+            from paper_fills
+            where idempotency_key = %(idempotency_key)s
+            """,
+            {"idempotency_key": idempotency_key},
+        )
+
+    def upsert_position_snapshot(self, values: dict[str, object]) -> dict[str, object]:
+        row = self._fetchone(
+            """
+            insert into positions (
+              hypothesis_id,
+              instrument,
+              quantity,
+              average_entry_price,
+              realized_pnl,
+              unrealized_pnl,
+              opened_at,
+              closed_at,
+              updated_at
+            )
+            values (
+              %(hypothesis_id)s,
+              %(instrument)s,
+              %(quantity)s,
+              %(average_entry_price)s,
+              %(realized_pnl)s,
+              %(unrealized_pnl)s,
+              %(opened_at)s,
+              %(closed_at)s,
+              %(updated_at)s
+            )
+            on conflict (hypothesis_id, instrument) do update set
+              quantity = excluded.quantity,
+              average_entry_price = excluded.average_entry_price,
+              realized_pnl = excluded.realized_pnl,
+              unrealized_pnl = excluded.unrealized_pnl,
+              closed_at = excluded.closed_at,
+              updated_at = excluded.updated_at
+            returning id, updated_at
+            """,
+            values,
+        )
+        if row is None:
+            raise RuntimeError("position snapshot upsert returned no row")
+        return row
+
+    def insert_valuation_snapshot(self, values: dict[str, object]) -> dict[str, object]:
+        row = self._fetchone(
+            """
+            insert into paper_valuations (
+              hypothesis_id,
+              idempotency_key,
+              instrument,
+              quantity,
+              average_entry_price,
+              cash,
+              starting_aum,
+              equity,
+              last_price,
+              market_value,
+              realized_pnl,
+              unrealized_pnl,
+              unrealized_pnl_pct,
+              total_pnl,
+              total_pnl_pct,
+              quote_freshness,
+              quote_source,
+              quote_observed_at,
+              payload
+            )
+            values (
+              %(hypothesis_id)s,
+              %(idempotency_key)s,
+              %(instrument)s,
+              %(quantity)s,
+              %(average_entry_price)s,
+              %(cash)s,
+              %(starting_aum)s,
+              %(equity)s,
+              %(last_price)s,
+              %(market_value)s,
+              %(realized_pnl)s,
+              %(unrealized_pnl)s,
+              %(unrealized_pnl_pct)s,
+              %(total_pnl)s,
+              %(total_pnl_pct)s,
+              %(quote_freshness)s,
+              %(quote_source)s,
+              %(quote_observed_at)s,
+              %(payload)s::jsonb
+            )
+            on conflict (idempotency_key) do update set
+              payload = excluded.payload
+            returning id, created_at
+            """,
+            values,
+        )
+        if row is None:
+            raise RuntimeError("valuation snapshot insert returned no row")
+        return row
+
+    def fetch_dashboard_read_model(self, hypothesis_id: str | None = None) -> dict[str, object]:
+        return self._fetchone(
+            """
+            select
+              (
+                select to_jsonb(p)
+                from positions p
+                where (%(hypothesis_id)s::uuid is null or p.hypothesis_id = %(hypothesis_id)s)
+                order by p.updated_at desc
+                limit 1
+              ) as position,
+              (
+                select to_jsonb(v)
+                from paper_valuations v
+                where (%(hypothesis_id)s::uuid is null or v.hypothesis_id = %(hypothesis_id)s)
+                order by v.created_at desc
+                limit 1
+              ) as valuation
+            """,
+            {"hypothesis_id": hypothesis_id},
+        ) or {"position": None, "valuation": None}
 
     def _fetchone(self, query: str, values: dict[str, object]) -> dict[str, object] | None:
         import psycopg

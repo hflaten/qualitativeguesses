@@ -24,6 +24,12 @@ from qualstocks.ingestion.service import (
     SourceEventRepository,
     SourceEventStatus,
 )
+from qualstocks.ingestion.trading_persistence import (
+    PaperTradingRepository,
+    PersistenceResult,
+    PersistenceStatus,
+    TradingDatabaseClient,
+)
 
 __all__ = [
     "AnalysisJob",
@@ -36,11 +42,15 @@ __all__ = [
     "InMemoryAnalysisQueue",
     "InMemoryEventRepository",
     "RuntimeAssembly",
+    "PaperTradingRepository",
+    "PersistenceResult",
+    "PersistenceStatus",
     "SourceEventRepository",
     "SourceEventStatus",
     "PostgresAnalysisQueue",
     "PostgresSourceEventRepository",
     "PsycopgDatabaseClient",
+    "TradingDatabaseClient",
     "build_persistence_components",
     "build_runtime_assembly",
     "build_source_adapters",
