@@ -38,6 +38,9 @@ Initial platform boundary decisions are captured in
 The first source predictive-power research dataset is documented in
 `docs/source-predictive-power-dataset.md`.
 
+Licensed newspaper and wire-feed source research is documented in
+`docs/licensed-news-feed-research.md`.
+
 ## Local Setup
 
 Install Python 3.12, then:
