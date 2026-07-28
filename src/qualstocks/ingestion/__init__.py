@@ -23,7 +23,11 @@ from qualstocks.ingestion.postgres import (
     PostgresSourceEventRepository,
     PsycopgDatabaseClient,
 )
-from qualstocks.ingestion.runtime import IngestionRuntime
+from qualstocks.ingestion.runtime import (
+    AdapterBackoffPolicy,
+    AdapterRuntimeState,
+    IngestionRuntime,
+)
 from qualstocks.ingestion.service import (
     AnalysisJob,
     IngestedEvent,
@@ -49,6 +53,8 @@ __all__ = [
     "AdapterEventErrorCode",
     "AdapterEventValidationError",
     "AdapterEventValidationResult",
+    "AdapterBackoffPolicy",
+    "AdapterRuntimeState",
     "DatabaseClient",
     "FixtureSourceAdapter",
     "IngestedEvent",

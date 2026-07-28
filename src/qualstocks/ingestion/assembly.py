@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import AsyncIterator
 
 from qualstocks.domain import SourceClass, SourceEvent
-from qualstocks.ingestion.runtime import IngestionRuntime
+from qualstocks.ingestion.runtime import AdapterBackoffPolicy, IngestionRuntime
 from qualstocks.ingestion.service import (
     AnalysisQueue,
     IngestionService,
@@ -84,7 +84,14 @@ def build_runtime_assembly(
     service = IngestionService(repository=repository, analysis_queue=analysis_queue)
     adapters = build_source_adapters(settings, fetch_client=fetch_client)
     return RuntimeAssembly(
-        runtime=IngestionRuntime(service=service, adapters=adapters),
+        runtime=IngestionRuntime(
+            service=service,
+            adapters=adapters,
+            backoff_policy=AdapterBackoffPolicy(
+                initial_seconds=settings.watcher_backoff_initial_seconds,
+                max_seconds=settings.watcher_backoff_max_seconds,
+            ),
+        ),
         repository=repository,
         analysis_queue=analysis_queue,
         adapter_source_ids=_adapter_source_ids(adapters),

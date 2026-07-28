@@ -14,6 +14,7 @@ from qualstocks.ingestion.contract import (
     validate_raw_adapter_event,
 )
 from qualstocks.ingestion.idempotency import build_idempotency_key
+from qualstocks.sources.adapters import AdapterHealth, AdapterHealthStatus, AdapterKind
 
 
 class StrEnum(str, Enum):
@@ -91,6 +92,9 @@ class SourceEventRepository(Protocol):
     def record_source_seen(self, event: SourceEvent) -> None:
         """Record source health/latency metadata after a successful ingest attempt."""
 
+    def record_adapter_health(self, health: AdapterHealth) -> None:
+        """Record adapter heartbeat or failure metadata for operator visibility."""
+
     def record_ingestion_outcome(self, outcome: IngestionOutcome) -> None:
         """Record created, duplicate, or rejected ingestion attempts for audit."""
 
@@ -156,6 +160,9 @@ class IngestionService:
             idempotency_key=build_idempotency_key(event),
         )
 
+    def record_adapter_health(self, health: AdapterHealth) -> None:
+        self.repository.record_adapter_health(health)
+
     async def _ingest_validated(
         self,
         event: SourceEvent,
@@ -189,6 +196,7 @@ class IngestionService:
 class InMemoryEventRepository:
     events_by_key: dict[str, IngestedEvent] = field(default_factory=dict)
     source_seen_at: dict[str, datetime] = field(default_factory=dict)
+    source_health: dict[str, dict[str, object]] = field(default_factory=dict)
     ingestion_outcomes: list[IngestionOutcome] = field(default_factory=list)
 
     def persist_source_event(self, event: SourceEvent, idempotency_key: str) -> IngestionResult:
@@ -215,6 +223,28 @@ class InMemoryEventRepository:
 
     def record_source_seen(self, event: SourceEvent) -> None:
         self.source_seen_at[event.source] = datetime.now(timezone.utc)
+        self.record_adapter_health(
+            AdapterHealth(
+                source=event.source,
+                source_class=event.source_class,
+                kind=AdapterKind.WEBHOOK,
+                source_id=event.source_id,
+                status=AdapterHealthStatus.HEALTHY,
+                last_event_at=event.first_seen_at,
+                last_error=None,
+            )
+        )
+
+    def record_adapter_health(self, health: AdapterHealth) -> None:
+        self.source_health[health.source] = {
+            "source": health.source,
+            "source_class": health.source_class.value,
+            "source_id": health.source_id,
+            "status": _repository_health_status(health.status),
+            "last_event_at": health.last_event_at,
+            "last_checked_at": health.last_checked_at,
+            "last_error": health.last_error,
+        }
 
     def record_ingestion_outcome(self, outcome: IngestionOutcome) -> None:
         self.ingestion_outcomes.append(outcome)
@@ -321,3 +351,13 @@ def _raw_event_ref(raw_event: RawAdapterEvent) -> str:
     if title:
         return f"{raw_event.source}:{title}"
     return f"{raw_event.source}:rejected"
+
+
+def _repository_health_status(status: AdapterHealthStatus) -> str:
+    if status == AdapterHealthStatus.HEALTHY:
+        return "online"
+    if status == AdapterHealthStatus.DEGRADED:
+        return "degraded"
+    if status == AdapterHealthStatus.DOWN:
+        return "offline"
+    return "unknown"

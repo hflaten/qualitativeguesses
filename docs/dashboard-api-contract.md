@@ -116,6 +116,7 @@ One row per enabled source or source group:
 {
   "source": "Polymarket",
   "source_class": "prediction_market",
+  "source_id": "polymarket_hormuz",
   "status": "online",
   "last_event_at": "2026-07-27T12:07:44Z",
   "last_checked_at": "2026-07-27T12:08:00Z",

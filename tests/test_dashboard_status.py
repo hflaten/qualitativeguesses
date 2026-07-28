@@ -51,6 +51,8 @@ class DashboardStatusTest(unittest.TestCase):
             source_persistence_backend="postgres",
             watcher_run_once=False,
             watcher_interval_seconds=30,
+            watcher_backoff_initial_seconds=5,
+            watcher_backoff_max_seconds=300,
         )
         self.now = datetime(2026, 7, 28, 10, 0, tzinfo=timezone.utc)
 
@@ -214,6 +216,7 @@ class DashboardStatusTest(unittest.TestCase):
                     {
                         "source": "CENTCOM RSS",
                         "source_class": "official_actor",
+                        "source_id": "centcom_rss",
                         "status": "online",
                         "last_event_at": self.now - timedelta(seconds=45),
                         "last_checked_at": self.now,
@@ -225,6 +228,7 @@ class DashboardStatusTest(unittest.TestCase):
         )
 
         self.assertEqual(status["source_health"][0]["lag_seconds"], 45)
+        self.assertEqual(status["source_health"][0]["source_id"], "centcom_rss")
 
     def _position_model(self, quote_freshness: str) -> dict[str, object]:
         return {
