@@ -14,6 +14,7 @@ from qualstocks.domain import (
     SourceEvent,
     SourceTier,
 )
+from qualstocks.strategy.source_weights import SourceWeight, SourceWeightBook
 
 
 class StrEnum(str, Enum):
@@ -86,11 +87,16 @@ class HypothesisLifecycleDecision:
     paper_order_intents: tuple[PaperOrderIntent, ...] = ()
     planned_exits: tuple[PlannedExit, ...] = ()
     audit_actions: tuple[str, ...] = ()
+    source_weight: SourceWeight | None = None
+    effective_confidence: float | None = None
 
 
 @dataclass(frozen=True)
 class HypothesisLifecycleEngine:
     config: HypothesisLifecycleConfig = field(default_factory=HypothesisLifecycleConfig)
+    source_weights: SourceWeightBook = field(
+        default_factory=lambda: SourceWeightBook(weights_by_source_id={})
+    )
 
     def apply_event(
         self,
@@ -101,38 +107,62 @@ class HypothesisLifecycleEngine:
         now: datetime | None = None,
     ) -> HypothesisLifecycleDecision:
         decision_time = now or datetime.now(timezone.utc)
+        source_weight = self.source_weights.weight_for_event(event)
+        effective_confidence = source_weight.effective_confidence(classification.confidence)
         if active_hypothesis is not None:
-            contradiction = self._contradicts(active_hypothesis, classification)
+            contradiction = self._contradicts(
+                active_hypothesis,
+                classification,
+                effective_confidence,
+            )
             if contradiction:
                 return self._contradict(
                     hypothesis=active_hypothesis,
                     event=event,
                     reason=contradiction,
+                    source_weight=source_weight,
+                    effective_confidence=effective_confidence,
                 )
             if norwegian_confirmation_source(event):
                 return self._confirm_norwegian(
                     hypothesis=active_hypothesis,
                     event=event,
                     anchor_time=event.first_seen_at,
+                    source_weight=source_weight,
+                    effective_confidence=effective_confidence,
                 )
-            if self._reinforces(active_hypothesis, event, classification):
-                return self._reinforce(hypothesis=active_hypothesis, event=event)
+            if self._reinforces(
+                active_hypothesis,
+                event,
+                classification,
+                effective_confidence,
+            ):
+                return self._reinforce(
+                    hypothesis=active_hypothesis,
+                    event=event,
+                    source_weight=source_weight,
+                    effective_confidence=effective_confidence,
+                )
             return HypothesisLifecycleDecision(
                 action=HypothesisTransitionAction.IGNORE,
                 reason="Event does not change the active hypothesis.",
                 hypothesis=active_hypothesis,
+                source_weight=source_weight,
+                effective_confidence=effective_confidence,
             )
 
-        if not self._can_open_hypothesis(event, classification):
+        if not self._can_open_hypothesis(event, classification, effective_confidence):
             return HypothesisLifecycleDecision(
                 action=HypothesisTransitionAction.IGNORE,
                 reason="Event is not a qualifying first signal.",
                 hypothesis=None,
+                source_weight=source_weight,
+                effective_confidence=effective_confidence,
             )
         hypothesis = ActiveHypothesis(
             thesis=_thesis_for(classification),
             direction=classification.direction,
-            confidence=classification.confidence,
+            confidence=effective_confidence,
             state=HypothesisState.ACTIVE,
             source_event_ids=(event.id,),
             created_at=decision_time,
@@ -151,6 +181,8 @@ class HypothesisLifecycleEngine:
                 ),
             ),
             audit_actions=("hypothesis_opened", "paper_order_intent_created"),
+            source_weight=source_weight,
+            effective_confidence=effective_confidence,
         )
 
     def evaluate_timers(
@@ -217,12 +249,13 @@ class HypothesisLifecycleEngine:
         self,
         event: SourceEvent,
         classification: EventClassification,
+        effective_confidence: float,
     ) -> bool:
         return (
             event.source_tier == SourceTier.TRIGGER
             and classification.relevant_to_equinor
             and classification.direction != Direction.UNCLEAR
-            and classification.confidence >= self.config.min_open_confidence
+            and effective_confidence >= self.config.min_open_confidence
         )
 
     def _reinforces(
@@ -230,6 +263,7 @@ class HypothesisLifecycleEngine:
         hypothesis: ActiveHypothesis,
         event: SourceEvent,
         classification: EventClassification,
+        effective_confidence: float,
     ) -> bool:
         return (
             hypothesis.can_accept_reinforcement()
@@ -237,21 +271,22 @@ class HypothesisLifecycleEngine:
             and event.source_tier in {SourceTier.TRIGGER, SourceTier.CONFIRMATION}
             and classification.relevant_to_equinor
             and classification.direction == hypothesis.direction
-            and (classification.is_reinforcement or classification.confidence >= 0.6)
+            and (classification.is_reinforcement or effective_confidence >= 0.6)
         )
 
     def _contradicts(
         self,
         hypothesis: ActiveHypothesis,
         classification: EventClassification,
+        effective_confidence: float,
     ) -> str | None:
-        if classification.is_contradiction:
+        if classification.is_contradiction and effective_confidence >= 0.6:
             return "Classification explicitly contradicts the active thesis."
         if (
             classification.relevant_to_equinor
             and classification.direction != Direction.UNCLEAR
             and classification.direction != hypothesis.direction
-            and classification.confidence >= 0.65
+            and effective_confidence >= 0.65
         ):
             return "New evidence points in the opposite Equinor direction."
         return None
@@ -261,6 +296,8 @@ class HypothesisLifecycleEngine:
         *,
         hypothesis: ActiveHypothesis,
         event: SourceEvent,
+        source_weight: SourceWeight,
+        effective_confidence: float,
     ) -> HypothesisLifecycleDecision:
         reinforced = replace(
             hypothesis,
@@ -281,6 +318,8 @@ class HypothesisLifecycleEngine:
                 ),
             ),
             audit_actions=("hypothesis_reinforced", "paper_order_intent_created"),
+            source_weight=source_weight,
+            effective_confidence=effective_confidence,
         )
 
     def _confirm_norwegian(
@@ -289,6 +328,8 @@ class HypothesisLifecycleEngine:
         hypothesis: ActiveHypothesis,
         event: SourceEvent,
         anchor_time: datetime,
+        source_weight: SourceWeight,
+        effective_confidence: float,
     ) -> HypothesisLifecycleDecision:
         confirmed = replace(
             hypothesis,
@@ -307,6 +348,8 @@ class HypothesisLifecycleEngine:
             hypothesis=confirmed,
             planned_exits=planned_exits,
             audit_actions=("norwegian_confirmation_recorded", "exit_timers_scheduled"),
+            source_weight=source_weight,
+            effective_confidence=effective_confidence,
         )
 
     def _contradict(
@@ -315,6 +358,8 @@ class HypothesisLifecycleEngine:
         hypothesis: ActiveHypothesis,
         event: SourceEvent,
         reason: str,
+        source_weight: SourceWeight,
+        effective_confidence: float,
     ) -> HypothesisLifecycleDecision:
         contradicted = replace(
             hypothesis,
@@ -331,6 +376,8 @@ class HypothesisLifecycleEngine:
             hypothesis=contradicted,
             paper_order_intents=(self._sell_intent(event.id, "Contradiction exit."),),
             audit_actions=("hypothesis_contradicted", "paper_exit_intent_created"),
+            source_weight=source_weight,
+            effective_confidence=effective_confidence,
         )
 
     def _sell_intent(self, source_event_id: str | None, reason: str) -> PaperOrderIntent:

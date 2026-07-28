@@ -164,6 +164,12 @@ class StrategyOrchestrator:
                 payload={
                     "lifecycle_action": lifecycle_decision.action.value,
                     "audit_actions": list(lifecycle_decision.audit_actions),
+                    "effective_confidence": lifecycle_decision.effective_confidence,
+                    "source_weight": (
+                        lifecycle_decision.source_weight.as_dict()
+                        if lifecycle_decision.source_weight
+                        else None
+                    ),
                 },
             )
         )

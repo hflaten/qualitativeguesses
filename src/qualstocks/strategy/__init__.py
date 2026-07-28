@@ -18,6 +18,11 @@ from qualstocks.strategy.risk import (
     RiskGateDecision,
     TradingMode,
 )
+from qualstocks.strategy.source_weights import (
+    SourceWeight,
+    SourceWeightBook,
+    source_weight_from_ranking,
+)
 
 __all__ = [
     "HypothesisLifecycleConfig",
@@ -32,6 +37,9 @@ __all__ = [
     "RiskGate",
     "RiskGateConfig",
     "RiskGateDecision",
+    "SourceWeight",
+    "SourceWeightBook",
     "TradingMode",
     "norwegian_confirmation_source",
+    "source_weight_from_ranking",
 ]
