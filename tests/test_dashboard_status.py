@@ -62,6 +62,7 @@ class DashboardStatusTest(unittest.TestCase):
         self.assertIsNone(status["active_hypothesis"])
         self.assertIsNone(status["paper_position"])
         self.assertEqual(status["queue_status"], {"queued": 0, "running": 0, "failed": 0})
+        self.assertEqual(status["event_timeline"], [])
 
     def test_active_hypothesis_sets_operator_state(self):
         status = build_dashboard_status(
@@ -109,6 +110,93 @@ class DashboardStatusTest(unittest.TestCase):
         )
 
         self.assertEqual(status["paper_position"]["quote_freshness"], "stale")
+
+    def test_timeline_orders_mixed_events_newest_first(self):
+        status = build_dashboard_status(
+            self.settings,
+            read_model={
+                "latest_events": [
+                    {
+                        "id": "event-1",
+                        "source": "CENTCOM RSS",
+                        "title": "Escalation report",
+                        "first_seen_at": self.now - timedelta(minutes=5),
+                    }
+                ],
+                "risk_decisions": [
+                    {
+                        "id": "risk-1",
+                        "status": "approved",
+                        "reason": "Paper order approved.",
+                        "created_at": self.now - timedelta(minutes=3),
+                    }
+                ],
+                "audit_timeline": [
+                    {
+                        "action": "paper_fill_created",
+                        "summary": "Paper fill created.",
+                        "created_at": self.now - timedelta(minutes=1),
+                    }
+                ],
+            },
+            now=self.now,
+        )
+
+        self.assertEqual(
+            [item["type"] for item in status["event_timeline"]],
+            ["paper_fill_created", "risk_decision", "source_event"],
+        )
+        self.assertEqual(status["event_timeline"][0]["title"], "Paper fill created.")
+
+    def test_timeline_includes_duplicate_and_rejected_events(self):
+        status = build_dashboard_status(
+            self.settings,
+            read_model={
+                "ingestion_results": [
+                    {
+                        "status": "duplicate",
+                        "source": "Reuters / LSEG News Service",
+                        "title": "Duplicate wire alert",
+                        "timestamp": self.now - timedelta(seconds=30),
+                        "idempotency_key": "reuters:1",
+                    },
+                    {
+                        "status": "unsupported",
+                        "source": "AP Media API",
+                        "rejection_reason": "instrument is not supported",
+                        "timestamp": self.now - timedelta(seconds=20),
+                        "idempotency_key": "ap:1",
+                    },
+                ]
+            },
+            now=self.now,
+        )
+
+        self.assertEqual(status["event_timeline"][0]["type"], "rejected_event")
+        self.assertEqual(status["event_timeline"][0]["severity"], "error")
+        self.assertEqual(status["event_timeline"][0]["entity_id"], "ap:1")
+        self.assertEqual(status["event_timeline"][1]["type"], "duplicate_event")
+        self.assertEqual(status["event_timeline"][1]["severity"], "info")
+
+    def test_active_hypothesis_adds_timeline_item(self):
+        status = build_dashboard_status(
+            self.settings,
+            read_model={
+                "active_hypothesis": {
+                    "id": "hyp-1",
+                    "state": "active",
+                    "created_at": self.now,
+                    "thesis": "Escalation raises oil supply risk.",
+                    "direction": "bullish_equinor",
+                    "confidence": Decimal("0.82"),
+                }
+            },
+            now=self.now,
+        )
+
+        self.assertEqual(status["event_timeline"][0]["type"], "hypothesis_active")
+        self.assertEqual(status["event_timeline"][0]["source"], "strategy")
+        self.assertEqual(status["event_timeline"][0]["entity_id"], "hyp-1")
 
     def test_zero_quantity_position_is_treated_as_no_open_position(self):
         model = self._position_model("fresh")

@@ -35,7 +35,8 @@ The endpoint returns the current paper-trading system state.
   "source_health": [],
   "paper_position": null,
   "planned_exits": [],
-  "audit_timeline": []
+  "audit_timeline": [],
+  "event_timeline": []
 }
 ```
 
@@ -219,6 +220,32 @@ Chronological operator-readable events:
   "event_id": "evt_123"
 }
 ```
+
+### `event_timeline`
+
+Unified operator timeline derived from source ingestion, duplicate/rejected
+ingestion results, active hypothesis state, risk decisions, and audit entries.
+
+```json
+{
+  "timestamp": "2026-07-27T12:03:17Z",
+  "type": "paper_order_approved",
+  "severity": "info",
+  "source": "risk_gate",
+  "title": "Tranche 1 paper buy approved after official escalation signal.",
+  "entity_id": "evt_123"
+}
+```
+
+Allowed V1 severities:
+
+- `info`
+- `warning`
+- `error`
+
+The feed is sorted newest-first. `/api/status` returns it alongside live P&L,
+and `/api/timeline` returns a compact payload with `system_state`,
+`paper_position`, and `event_timeline`.
 
 ## Idle example
 

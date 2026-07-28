@@ -35,6 +35,30 @@ def health() -> dict[str, object]:
 
 @app.get("/api/status")
 def api_status() -> dict[str, object]:
+    settings, read_model, services_error = _dashboard_inputs()
+    return build_dashboard_status(
+        settings,
+        read_model=read_model,
+        services_error=services_error,
+    )
+
+
+@app.get("/api/timeline")
+def api_timeline() -> dict[str, object]:
+    settings, read_model, services_error = _dashboard_inputs()
+    status = build_dashboard_status(
+        settings,
+        read_model=read_model,
+        services_error=services_error,
+    )
+    return {
+        "system_state": status["system_state"],
+        "paper_position": status["paper_position"],
+        "event_timeline": status["event_timeline"],
+    }
+
+
+def _dashboard_inputs() -> tuple[object, dict[str, object] | None, str | None]:
     settings = load_settings()
     read_model: dict[str, object] | None = None
     services_error = None
@@ -44,11 +68,7 @@ def api_status() -> dict[str, object]:
             read_model = client.fetch_dashboard_read_model()
         except Exception as exc:
             services_error = f"dashboard read model unavailable: {exc}"
-    return build_dashboard_status(
-        settings,
-        read_model=read_model,
-        services_error=services_error,
-    )
+    return settings, read_model, services_error
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -147,6 +167,10 @@ def dashboard() -> str:
               <h2>Planned Exits</h2>
               <div id="exits" class="list"></div>
             </div>
+            <div class="card span-12">
+              <h2>Timeline</h2>
+              <div id="timeline" class="list"></div>
+            </div>
             <div class="card span-6">
               <h2>Latest Events</h2>
               <div id="events" class="list"></div>
@@ -232,6 +256,11 @@ def dashboard() -> str:
               data.planned_exits,
               item => `<div class="row"><h3>${text(item.status)}</h3><div class="muted">${text(item.window_minutes)} min · ${text(item.scheduled_for)}</div></div>`,
               "No planned exits"
+            );
+            document.getElementById("timeline").innerHTML = rows(
+              data.event_timeline,
+              item => `<div class="row"><h3>${text(item.title)}</h3><div class="muted">${text(item.timestamp)} · ${text(item.type)} · ${text(item.source)} · ${text(item.severity)}</div></div>`,
+              "No timeline entries yet"
             );
             document.getElementById("events").innerHTML = rows(
               data.latest_events,
