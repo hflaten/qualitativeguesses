@@ -5,15 +5,32 @@ from fastapi.responses import HTMLResponse
 
 from qualstocks.dashboard import build_dashboard_status
 from qualstocks.ingestion import PsycopgDatabaseClient
+from qualstocks.runtime_health import (
+    ServiceName,
+    service_health_payload,
+    validate_service_startup,
+)
 from qualstocks.settings import load_settings
 
 app = FastAPI(title="Qualitative Guesses", version="0.1.0")
 
 
+@app.on_event("startup")
+def validate_api_startup() -> None:
+    settings = load_settings()
+    validate_service_startup(settings, ServiceName.API).raise_for_errors()
+
+
 @app.get("/health")
 def health() -> dict[str, object]:
     settings = load_settings()
-    return {"ok": True, **settings.public_status}
+    startup = validate_service_startup(settings, ServiceName.API)
+    return {
+        "ok": startup.ok,
+        **settings.public_status,
+        "startup": startup.as_log_payload(),
+        "services": service_health_payload(settings),
+    }
 
 
 @app.get("/api/status")
