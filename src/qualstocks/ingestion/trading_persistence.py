@@ -7,7 +7,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Protocol
 
-from qualstocks.domain import EventClassification
+from qualstocks.domain import ActiveHypothesis, Direction, EventClassification, HypothesisState
 from qualstocks.paper import PaperFill, PaperOrder, PaperPosition, PortfolioValuation
 from qualstocks.strategy import RiskGateDecision
 from qualstocks.strategy.orchestrator import OrchestratorAuditEvent
@@ -34,6 +34,15 @@ class PersistenceResult:
 
 
 class TradingDatabaseClient(Protocol):
+    def insert_hypothesis(self, values: dict[str, object]) -> dict[str, object] | None:
+        """Insert a hypothesis row, or return None on duplicate."""
+
+    def fetch_hypothesis(self, hypothesis_id: str) -> dict[str, object] | None:
+        """Fetch a persisted hypothesis by id."""
+
+    def fetch_active_hypothesis(self) -> dict[str, object] | None:
+        """Fetch the latest open hypothesis if one exists."""
+
     def insert_event_classification(self, values: dict[str, object]) -> dict[str, object] | None:
         """Insert a classification row, or return None on duplicate."""
 
@@ -77,6 +86,20 @@ class TradingDatabaseClient(Protocol):
 @dataclass(frozen=True)
 class PaperTradingRepository:
     client: TradingDatabaseClient
+
+    def persist_hypothesis(self, hypothesis: ActiveHypothesis) -> PersistenceResult:
+        row = self.client.insert_hypothesis(_hypothesis_values(hypothesis))
+        status = PersistenceStatus.CREATED
+        if row is None:
+            row = self.client.fetch_hypothesis(hypothesis.id)
+            status = PersistenceStatus.DUPLICATE
+        return _result(row, status, "hypothesis")
+
+    def active_hypothesis(self) -> ActiveHypothesis | None:
+        row = self.client.fetch_active_hypothesis()
+        if row is None:
+            return None
+        return _hypothesis_from_row(row)
 
     def persist_event_classification(
         self,
@@ -216,6 +239,46 @@ class PaperTradingRepository:
             )
             for index, event in enumerate(events)
         )
+
+
+def _hypothesis_values(hypothesis: ActiveHypothesis) -> dict[str, object]:
+    return {
+        "id": hypothesis.id,
+        "state": hypothesis.state.value,
+        "thesis": hypothesis.thesis,
+        "direction": hypothesis.direction.value,
+        "confidence": Decimal(str(hypothesis.confidence)),
+        "source_event_ids": list(hypothesis.source_event_ids),
+        "norwegian_confirmation_at": hypothesis.norwegian_confirmation_at,
+        "created_at": hypothesis.created_at,
+        "updated_at": hypothesis.created_at,
+    }
+
+
+def _hypothesis_from_row(row: dict[str, object]) -> ActiveHypothesis:
+    source_event_ids = row.get("source_event_ids") or ()
+    if isinstance(source_event_ids, list):
+        source_event_ids = tuple(str(value) for value in source_event_ids)
+    elif not isinstance(source_event_ids, tuple):
+        source_event_ids = ()
+    return ActiveHypothesis(
+        id=str(row["id"]),
+        state=HypothesisState(str(row["state"])),
+        thesis=str(row["thesis"]),
+        direction=Direction(str(row["direction"])),
+        confidence=float(row["confidence"]),
+        source_event_ids=source_event_ids,
+        norwegian_confirmation_at=(
+            row["norwegian_confirmation_at"]
+            if isinstance(row.get("norwegian_confirmation_at"), datetime)
+            else None
+        ),
+        created_at=(
+            row["created_at"]
+            if isinstance(row.get("created_at"), datetime)
+            else datetime.now(timezone.utc)
+        ),
+    )
 
 
 def _classification_values(

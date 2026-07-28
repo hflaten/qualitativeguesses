@@ -53,6 +53,9 @@ The first source predictive-power research dataset is documented in
 Strategy source weights derived from predictive-power rankings are documented in
 `docs/source-weights.md`.
 
+The completed-classification to paper-trading strategy worker boundary is
+documented in `docs/strategy-worker.md`.
+
 Licensed newspaper and wire-feed source research is documented in
 `docs/licensed-news-feed-research.md`.
 
