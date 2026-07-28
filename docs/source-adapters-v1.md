@@ -21,6 +21,40 @@ or source reference, raw payload, and source timestamp when available. The
 watcher adds `first_seen_at` and the event id. Invalid payloads are logged and
 discarded; they do not stop other adapters.
 
+The code-level contract separates raw provider data from normalized source
+events:
+
+- `RawAdapterEvent`: provider-shaped event with source, source class, instrument,
+  payload, provenance, source timestamp, first-seen timestamp, and optional
+  provider idempotency key.
+- `NormalizedAdapterEvent`: normalized `SourceEvent` plus the idempotency key the
+  ingestion service uses for dedupe.
+- `SourceEvent`: analysis-ready event with stable source metadata, timestamp,
+  instrument reference, payload, provenance-derived raw reference, and
+  normalized UTC timestamps.
+
+V1 supports `EQNR.OL` as the default instrument. Unsupported instruments are
+rejected before persistence so they cannot enqueue AI analysis or create a
+hypothesis.
+
+## Validation and errors
+
+Adapters should validate raw events before normalization. The ingestion service
+also validates normalized events before persistence. Validation outcomes are
+explicit:
+
+- `malformed`: required fields such as source, title, payload object, or
+  instrument are missing or invalid.
+- `duplicate`: idempotency key already exists; the event is recorded as seen but
+  analysis is not enqueued again.
+- `late`: source timestamp is older than the configured maximum event age.
+- `unsupported`: event is well-formed but outside V1 scope, such as a non-EQNR
+  instrument.
+
+Malformed, late, and unsupported events are rejected before persistence. Duplicate
+events return the already persisted event and do not enqueue a second analysis
+job.
+
 ## V1 adapter classes
 
 | Class | Trigger and use | V1 behavior |
@@ -76,4 +110,3 @@ with endpoint, authentication, rate limit, parser version, and polling interval.
 - [ ] A replay fixture exists for at least one event per adapter class.
 - [ ] Kill/restart testing confirms cursors and dedupe state do not create
   duplicate events.
-

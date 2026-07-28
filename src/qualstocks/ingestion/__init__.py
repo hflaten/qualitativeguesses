@@ -7,6 +7,16 @@ from qualstocks.ingestion.assembly import (
     build_runtime_assembly,
     build_source_adapters,
 )
+from qualstocks.ingestion.contract import (
+    AdapterContractConfig,
+    AdapterEventErrorCode,
+    AdapterEventValidationError,
+    AdapterEventValidationResult,
+    NormalizedAdapterEvent,
+    RawAdapterEvent,
+    normalize_raw_adapter_event,
+    validate_raw_adapter_event,
+)
 from qualstocks.ingestion.postgres import (
     DatabaseClient,
     PostgresAnalysisQueue,
@@ -19,6 +29,7 @@ from qualstocks.ingestion.service import (
     IngestedEvent,
     IngestionResult,
     IngestionService,
+    IngestionValidationConfig,
     InMemoryAnalysisQueue,
     InMemoryEventRepository,
     SourceEventRepository,
@@ -33,18 +44,25 @@ from qualstocks.ingestion.trading_persistence import (
 
 __all__ = [
     "AnalysisJob",
+    "AdapterContractConfig",
+    "AdapterEventErrorCode",
+    "AdapterEventValidationError",
+    "AdapterEventValidationResult",
     "DatabaseClient",
     "FixtureSourceAdapter",
     "IngestedEvent",
     "IngestionResult",
     "IngestionRuntime",
     "IngestionService",
+    "IngestionValidationConfig",
     "InMemoryAnalysisQueue",
     "InMemoryEventRepository",
+    "NormalizedAdapterEvent",
     "RuntimeAssembly",
     "PaperTradingRepository",
     "PersistenceResult",
     "PersistenceStatus",
+    "RawAdapterEvent",
     "SourceEventRepository",
     "SourceEventStatus",
     "PostgresAnalysisQueue",
@@ -54,4 +72,6 @@ __all__ = [
     "build_persistence_components",
     "build_runtime_assembly",
     "build_source_adapters",
+    "normalize_raw_adapter_event",
+    "validate_raw_adapter_event",
 ]

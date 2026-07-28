@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Protocol
 
@@ -16,6 +16,9 @@ class StrEnum(str, Enum):
 class SourceEventStatus(StrEnum):
     CREATED = "created"
     DUPLICATE = "duplicate"
+    MALFORMED = "malformed"
+    LATE = "late"
+    UNSUPPORTED = "unsupported"
 
 
 @dataclass(frozen=True)
@@ -39,12 +42,27 @@ class AnalysisJob:
 @dataclass(frozen=True)
 class IngestionResult:
     status: SourceEventStatus
-    ingested_event: IngestedEvent
+    ingested_event: IngestedEvent | None
     analysis_job: AnalysisJob | None
+    rejection_reason: str | None = None
 
     @property
     def created(self) -> bool:
         return self.status == SourceEventStatus.CREATED
+
+    @property
+    def rejected(self) -> bool:
+        return self.status in {
+            SourceEventStatus.MALFORMED,
+            SourceEventStatus.LATE,
+            SourceEventStatus.UNSUPPORTED,
+        }
+
+
+@dataclass(frozen=True)
+class IngestionValidationConfig:
+    supported_instruments: tuple[str, ...] = ("EQNR.OL",)
+    max_source_event_age: timedelta = timedelta(days=7)
 
 
 class SourceEventRepository(Protocol):
@@ -64,12 +82,25 @@ class AnalysisQueue(Protocol):
 class IngestionService:
     repository: SourceEventRepository
     analysis_queue: AnalysisQueue
+    validation_config: IngestionValidationConfig = IngestionValidationConfig()
 
     async def ingest(self, event: SourceEvent) -> IngestionResult:
+        rejection = _source_event_rejection(event, self.validation_config)
+        if rejection is not None:
+            status, reason = rejection
+            return IngestionResult(
+                status=status,
+                ingested_event=None,
+                analysis_job=None,
+                rejection_reason=reason,
+            )
+
         idempotency_key = build_idempotency_key(event)
         result = self.repository.persist_source_event(event, idempotency_key)
         self.repository.record_source_seen(event)
         if result.created:
+            if result.ingested_event is None:
+                raise RuntimeError("created ingestion result is missing ingested_event")
             job = self.analysis_queue.enqueue_analysis(result.ingested_event)
             return IngestionResult(
                 status=result.status,
@@ -130,3 +161,22 @@ def _source_latency_seconds(event: SourceEvent) -> float | None:
     if event.source_timestamp is None:
         return None
     return max(0.0, (event.first_seen_at - event.source_timestamp).total_seconds())
+
+
+def _source_event_rejection(
+    event: SourceEvent,
+    config: IngestionValidationConfig,
+) -> tuple[SourceEventStatus, str] | None:
+    if not event.source.strip():
+        return SourceEventStatus.MALFORMED, "source is required"
+    if not event.title.strip():
+        return SourceEventStatus.MALFORMED, "title is required"
+    if not isinstance(event.payload, dict):
+        return SourceEventStatus.MALFORMED, "payload must be an object"
+    if event.instrument and event.instrument not in config.supported_instruments:
+        return SourceEventStatus.UNSUPPORTED, "instrument is not supported"
+    if event.source_timestamp is not None:
+        event_age = event.first_seen_at - event.source_timestamp
+        if event_age > config.max_source_event_age:
+            return SourceEventStatus.LATE, "source event is too old"
+    return None

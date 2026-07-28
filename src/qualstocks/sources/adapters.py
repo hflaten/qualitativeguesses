@@ -111,6 +111,7 @@ class BaseSourceAdapter:
         title: str,
         url: str,
         payload: dict[str, object],
+        instrument: str | None = None,
         source_timestamp: datetime | None = None,
     ) -> SourceEvent:
         event = SourceEvent(
@@ -119,6 +120,7 @@ class BaseSourceAdapter:
             title=title,
             url=url,
             payload=payload,
+            instrument=instrument,
             source_id=self.source_definition.source_id if self.source_definition else None,
             source_tier=self.source_definition.tier if self.source_definition else None,
             source_category=self.source_definition.category if self.source_definition else None,
