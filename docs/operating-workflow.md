@@ -37,6 +37,8 @@ Each implementation ticket should include:
 - safety and live-trading risk notes where relevant;
 - branch hint using the `QUA-<number>` issue key.
 
+Use `docs/linear-issue-template.md` when creating or refining tickets.
+
 Split tickets when one issue would require unrelated write scopes, different
 owners, or separate design decisions. Keep a ticket together when the work
 shares one public contract or must be integrated atomically.

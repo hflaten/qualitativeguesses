@@ -28,6 +28,8 @@ Railway service setup is documented in `docs/railway-services.md`.
 Codex, Linear, and GitHub operating workflow is documented in
 `docs/operating-workflow.md`.
 
+Reusable Linear issue template is documented in `docs/linear-issue-template.md`.
+
 Initial platform boundary decisions are captured in
 `docs/adr/0001-platform-boundaries.md`.
 
