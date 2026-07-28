@@ -281,6 +281,11 @@ DEFAULT_SOURCE_DEFINITIONS: tuple[SourceDefinition, ...] = (
         licensing_class=LicensingClass.PUBLIC_WITH_TERMS,
         language="no",
         translation_required=True,
+        url="http://e24.no/rss/?seksjon=boers-og-finans",
+        notes=(
+            "Verified public RSS feed for Bors og finans; "
+            "V1 Norwegian press confirmation."
+        ),
     ),
     SourceDefinition(
         source_id="dn",

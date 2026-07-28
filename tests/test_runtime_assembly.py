@@ -80,12 +80,19 @@ class RuntimeAssemblyTest(unittest.TestCase):
             {
                 "SOURCE_OFFICIAL_US_RSS_ENABLED": "true",
                 "SOURCE_OFFICIAL_IRAN_RSS_ENABLED": "true",
+                "SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED": "true",
             }
         )
 
-        assembly = build_runtime_assembly(settings, fetch_client=FakeTextFetchClient(RSS_FIXTURE))
+        assembly = build_runtime_assembly(
+            settings,
+            fetch_client=FakeTextFetchClient(RSS_FIXTURE),
+        )
 
-        self.assertEqual(assembly.adapter_source_ids, ("dod_rss", "centcom_rss", "tasnim"))
+        self.assertEqual(
+            assembly.adapter_source_ids,
+            ("dod_rss", "centcom_rss", "tasnim", "e24"),
+        )
 
     def test_runtime_run_once_ingests_fixture_event(self):
         settings = settings_from_env({"SOURCE_FIXTURE_MODE_ENABLED": "true"})
@@ -103,6 +110,7 @@ class RuntimeAssemblyTest(unittest.TestCase):
             {
                 "SOURCE_FIXTURE_MODE_ENABLED": "true",
                 "SOURCE_OFFICIAL_US_RSS_ENABLED": "true",
+                "SOURCE_NORWEGIAN_CONFIRMATION_RSS_ENABLED": "true",
             }
         )
         fetch_client = FakeTextFetchClient(RSS_FIXTURE)
@@ -110,11 +118,12 @@ class RuntimeAssemblyTest(unittest.TestCase):
 
         asyncio.run(run_watcher(assembly))
 
-        self.assertEqual(len(assembly.repository.events_by_key), 3)
-        self.assertEqual(len(assembly.analysis_queue.jobs), 3)
+        self.assertEqual(len(assembly.repository.events_by_key), 4)
+        self.assertEqual(len(assembly.analysis_queue.jobs), 4)
         self.assertEqual(fetch_client.urls, [
             "https://www.defense.gov/news/rss",
             "https://www.centcom.mil/rss/",
+            "http://e24.no/rss/?seksjon=boers-og-finans",
         ])
 
     def test_run_watcher_with_no_adapters_returns_without_ingestion(self):

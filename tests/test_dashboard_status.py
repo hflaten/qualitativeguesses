@@ -44,6 +44,7 @@ class DashboardStatusTest(unittest.TestCase):
             quote_timeout_seconds=10,
             source_official_us_rss_enabled=True,
             source_official_iran_rss_enabled=True,
+            source_norwegian_confirmation_rss_enabled=False,
             source_fixture_mode_enabled=False,
             source_persistence_backend="postgres",
             watcher_run_once=False,

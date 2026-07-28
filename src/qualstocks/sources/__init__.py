@@ -38,6 +38,13 @@ from qualstocks.sources.official_iran import (
     build_tasnim_rss_adapter,
     iran_source_access_notes,
 )
+from qualstocks.sources.norwegian import (
+    NORWEGIAN_CONFIRMATION_KEYWORDS,
+    NorwegianSourceAccessNote,
+    build_e24_rss_adapter,
+    build_norwegian_confirmation_rss_adapters,
+    norwegian_source_access_notes,
+)
 from qualstocks.sources.registry import (
     DEFAULT_SOURCE_DEFINITIONS,
     DEFAULT_SOURCE_REGISTRY,
@@ -94,6 +101,8 @@ __all__ = [
     "KalshiMarket",
     "KalshiSignalConfig",
     "KeywordFilter",
+    "NORWEGIAN_CONFIRMATION_KEYWORDS",
+    "NorwegianSourceAccessNote",
     "OFFICIAL_US_KEYWORDS",
     "PolymarketAdapter",
     "PolymarketEventNormalizer",
@@ -113,6 +122,8 @@ __all__ = [
     "RssItem",
     "build_centcom_rss_adapter",
     "build_dod_rss_adapter",
+    "build_e24_rss_adapter",
+    "build_norwegian_confirmation_rss_adapters",
     "build_official_iran_rss_adapters",
     "build_official_us_rss_adapters",
     "build_tasnim_rss_adapter",
@@ -121,5 +132,6 @@ __all__ = [
     "iaea_nuclear_escalation_event",
     "iran_source_access_notes",
     "macro_fx_event",
+    "norwegian_source_access_notes",
     "ukmto_alert_event",
 ]
