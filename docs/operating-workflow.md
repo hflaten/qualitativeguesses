@@ -65,6 +65,8 @@ Before changing files for a Linear issue:
 - One branch and PR should map to one Linear issue unless a senior decision
   explicitly groups tiny documentation-only work.
 
+GitHub-to-Linear sync behavior is recorded in `docs/linear-github-sync.md`.
+
 ## Implementation Loop
 
 During implementation, Codex should:
