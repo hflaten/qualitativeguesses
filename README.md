@@ -34,6 +34,9 @@ Production paper dry-run and smoke checks are documented in
 The future broker execution boundary is documented in
 `docs/broker-adapter-interface.md`.
 
+The structured analysis client and replay fixture boundary is documented in
+`docs/analysis-client-boundary.md`.
+
 Codex, Linear, and GitHub operating workflow is documented in
 `docs/operating-workflow.md`.
 

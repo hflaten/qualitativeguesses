@@ -8,6 +8,7 @@ from qualstocks.analysis import (
     AnalysisJobStatus,
     EventAnalysisWorker,
     MalformedModelOutput,
+    ReplayClassificationClient,
     classify_from_payload,
 )
 from qualstocks.domain import Direction, SourceClass, SourceEvent, SourceTier
@@ -177,6 +178,86 @@ class AnalysisWorkerTest(unittest.TestCase):
         self.assertFalse(result.classification.relevant_to_equinor)
         self.assertEqual(result.classification.direction, Direction.UNCLEAR)
         self.assertEqual(len(analysis_model.calls), 0)
+
+    def test_replay_client_drives_reinforcement_classification(self):
+        replay = ReplayClassificationClient.from_mapping(
+            {
+                "gpt-5-nano": (
+                    {
+                        "relevant_to_equinor": True,
+                        "confidence": 0.82,
+                        "event_type": "hormuz_disruption",
+                        "reasoning_summary": "Relevant follow-up signal.",
+                    },
+                ),
+                "gpt-5-mini": (
+                    {
+                        "relevant_to_equinor": True,
+                        "direction": "bullish_equinor",
+                        "confidence": 0.81,
+                        "event_type": "hormuz_disruption",
+                        "reasoning_summary": "Independent source reinforces the thesis.",
+                        "is_reinforcement": True,
+                        "is_contradiction": False,
+                    },
+                ),
+            }
+        )
+        worker = EventAnalysisWorker(
+            queue=FakeQueue(event=self.event, job=self.job),
+            classification_repository=PaperTradingRepository(FakeTradingDatabaseClient()),
+            filter_model_client=replay,
+            analysis_model_client=replay,
+        )
+
+        result = worker.run_once(now=self.now)
+
+        self.assertEqual(result.status, AnalysisJobStatus.COMPLETED)
+        self.assertTrue(result.classification.is_reinforcement)
+        self.assertEqual([call["model"] for call in replay.calls], ["gpt-5-nano", "gpt-5-mini"])
+
+    def test_replay_client_drives_contradiction_classification(self):
+        replay = ReplayClassificationClient.from_mapping(
+            {
+                "gpt-5-nano": (
+                    {
+                        "relevant_to_equinor": True,
+                        "confidence": 0.88,
+                        "event_type": "deescalation",
+                        "reasoning_summary": "Relevant de-escalation signal.",
+                    },
+                ),
+                "gpt-5-mini": (
+                    {
+                        "relevant_to_equinor": True,
+                        "direction": "bearish_equinor",
+                        "confidence": 0.79,
+                        "event_type": "deescalation",
+                        "reasoning_summary": "De-escalation contradicts the oil-shock thesis.",
+                        "is_reinforcement": False,
+                        "is_contradiction": True,
+                    },
+                ),
+            }
+        )
+        worker = EventAnalysisWorker(
+            queue=FakeQueue(event=self.event, job=self.job),
+            classification_repository=PaperTradingRepository(FakeTradingDatabaseClient()),
+            filter_model_client=replay,
+            analysis_model_client=replay,
+        )
+
+        result = worker.run_once(now=self.now)
+
+        self.assertEqual(result.status, AnalysisJobStatus.COMPLETED)
+        self.assertEqual(result.classification.direction, Direction.BEARISH_EQUINOR)
+        self.assertTrue(result.classification.is_contradiction)
+
+    def test_replay_client_reports_unexpected_model_calls(self):
+        replay = ReplayClassificationClient.from_mapping({"gpt-5-nano": ()})
+
+        with self.assertRaisesRegex(AssertionError, "unexpected model call"):
+            replay.classify({}, model="gpt-5-nano")
 
     def test_malformed_model_output_marks_job_failed(self):
         queue = FakeQueue(event=self.event, job=self.job)
