@@ -84,6 +84,7 @@ class SourceEvent:
     title: str
     url: str
     payload: dict[str, object]
+    instrument: str | None = None
     source_id: str | None = None
     source_tier: SourceTier | None = None
     source_category: SourceCategory | None = None

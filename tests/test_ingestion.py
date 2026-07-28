@@ -1,14 +1,19 @@
 import asyncio
 import unittest
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
-from qualstocks.domain import SourceClass
+from qualstocks.domain import SourceClass, SourceEvent
 from qualstocks.ingestion import (
+    AdapterEventErrorCode,
     InMemoryAnalysisQueue,
     InMemoryEventRepository,
     IngestionRuntime,
     IngestionService,
+    IngestionValidationConfig,
+    RawAdapterEvent,
     SourceEventStatus,
+    normalize_raw_adapter_event,
+    validate_raw_adapter_event,
 )
 from qualstocks.sources import DEFAULT_SOURCE_REGISTRY, WebhookAdapter
 
@@ -41,6 +46,27 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(len(repository.events_by_key), 1)
         self.assertEqual(len(queue.jobs), 1)
         self.assertIn("CENTCOM", repository.source_seen_at)
+
+    def test_raw_adapter_event_normalizes_to_source_event_with_contract_fields(self):
+        raw = RawAdapterEvent(
+            source="CENTCOM",
+            source_class=SourceClass.OFFICIAL_ACTOR,
+            instrument="EQNR.OL",
+            payload={"headline": "Statement on regional military activity"},
+            provenance={
+                "url": "https://example.invalid/centcom",
+                "raw_event_ref": "centcom-1",
+            },
+            source_timestamp=datetime(2026, 7, 27, 12, 0, tzinfo=timezone.utc),
+            first_seen_at=datetime(2026, 7, 27, 12, 0, 5, tzinfo=timezone.utc),
+        )
+
+        normalized = normalize_raw_adapter_event(raw)
+
+        self.assertEqual(normalized.event.title, "Statement on regional military activity")
+        self.assertEqual(normalized.event.instrument, "EQNR.OL")
+        self.assertEqual(normalized.event.raw_event_ref, "centcom-1")
+        self.assertTrue(normalized.idempotency_key.startswith("official_actor:centcom:"))
 
     def test_duplicate_event_is_not_enqueued_twice(self):
         repository = InMemoryEventRepository()
@@ -94,6 +120,90 @@ class IngestionTest(unittest.TestCase):
 
         self.assertIsNotNone(result.analysis_job)
         self.assertEqual(result.analysis_job.source_id, "ukmto")
+
+    def test_malformed_event_is_rejected_before_persistence(self):
+        repository = InMemoryEventRepository()
+        queue = InMemoryAnalysisQueue()
+        service = IngestionService(repository=repository, analysis_queue=queue)
+
+        result = asyncio.run(
+            service.ingest(
+                SourceEvent(
+                    source="CENTCOM",
+                    source_class=SourceClass.OFFICIAL_ACTOR,
+                    title="",
+                    url="https://example.invalid/centcom",
+                    payload={"severity": "high"},
+                    instrument="EQNR.OL",
+                )
+            )
+        )
+
+        self.assertTrue(result.rejected)
+        self.assertEqual(result.status, SourceEventStatus.MALFORMED)
+        self.assertEqual(result.rejection_reason, "title is required")
+        self.assertEqual(len(repository.events_by_key), 0)
+        self.assertEqual(len(queue.jobs), 0)
+
+    def test_unsupported_instrument_is_rejected_before_persistence(self):
+        repository = InMemoryEventRepository()
+        queue = InMemoryAnalysisQueue()
+        service = IngestionService(repository=repository, analysis_queue=queue)
+        adapter = WebhookAdapter("CENTCOM", SourceClass.OFFICIAL_ACTOR)
+        event = adapter._record_event(
+            title="Statement on another issuer",
+            url="https://example.invalid/centcom",
+            payload={"severity": "high"},
+            instrument="AKRBP.OL",
+        )
+
+        result = asyncio.run(service.ingest(event))
+
+        self.assertEqual(result.status, SourceEventStatus.UNSUPPORTED)
+        self.assertEqual(result.rejection_reason, "instrument is not supported")
+        self.assertEqual(len(repository.events_by_key), 0)
+
+    def test_late_event_is_rejected_before_persistence(self):
+        repository = InMemoryEventRepository()
+        queue = InMemoryAnalysisQueue()
+        service = IngestionService(
+            repository=repository,
+            analysis_queue=queue,
+            validation_config=IngestionValidationConfig(max_source_event_age=timedelta(minutes=5)),
+        )
+        adapter = WebhookAdapter("CENTCOM", SourceClass.OFFICIAL_ACTOR)
+        event = adapter._record_event(
+            title="Old statement",
+            url="https://example.invalid/centcom",
+            payload={"severity": "high"},
+            instrument="EQNR.OL",
+            source_timestamp=datetime.now(timezone.utc) - timedelta(minutes=10),
+        )
+
+        result = asyncio.run(service.ingest(event))
+
+        self.assertEqual(result.status, SourceEventStatus.LATE)
+        self.assertEqual(result.rejection_reason, "source event is too old")
+        self.assertEqual(len(queue.jobs), 0)
+
+    def test_raw_adapter_validation_reports_unsupported_and_late_events(self):
+        raw = RawAdapterEvent(
+            source="CENTCOM",
+            source_class=SourceClass.OFFICIAL_ACTOR,
+            instrument="AKRBP.OL",
+            payload={"headline": "Old event"},
+            provenance={"url": "https://example.invalid/centcom"},
+            source_timestamp=datetime(2026, 7, 1, 12, 0, tzinfo=timezone.utc),
+            first_seen_at=datetime(2026, 7, 27, 12, 0, tzinfo=timezone.utc),
+        )
+
+        validation = validate_raw_adapter_event(raw)
+
+        self.assertFalse(validation.valid)
+        self.assertEqual(
+            {error.code for error in validation.errors},
+            {AdapterEventErrorCode.UNSUPPORTED, AdapterEventErrorCode.LATE},
+        )
 
 
 if __name__ == "__main__":

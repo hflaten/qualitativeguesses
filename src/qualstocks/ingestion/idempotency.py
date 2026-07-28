@@ -13,8 +13,8 @@ def build_idempotency_key(event: SourceEvent) -> str:
         event.source_class.value,
         event.url.strip().lower(),
         event.title.strip().lower(),
+        event.instrument or "",
         timestamp,
     )
     digest = sha256("\n".join(parts).encode("utf-8")).hexdigest()
     return f"{event.source_class.value}:{event.source.strip().lower()}:{digest}"
-
