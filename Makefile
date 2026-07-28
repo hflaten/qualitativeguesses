@@ -1,4 +1,4 @@
-.PHONY: dev test lint typecheck api watcher worker
+.PHONY: dev test lint typecheck api watcher worker smoke
 
 PYTHON ?= python3
 PYTHON_ENV = PYTHONDONTWRITEBYTECODE=1 PYTHONPYCACHEPREFIX=.pycache
@@ -13,6 +13,9 @@ watcher:
 
 worker:
 	$(PYTHON_ENV) $(PYTHON) -m qualstocks.worker
+
+smoke:
+	$(PYTHON_ENV) $(PYTHON) -m qualstocks.runtime_smoke
 
 test:
 	$(PYTHON_ENV) $(PYTHON) -m unittest discover -s tests

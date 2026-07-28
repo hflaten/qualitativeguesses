@@ -113,6 +113,15 @@ quote provider, and paper-trading worker. In local/dev environments, missing
 runtime wiring is reported as warnings or degraded component status so the app
 can still be opened while secrets are being configured.
 
+Run the deployment smoke check after every production paper-runtime deployment:
+
+```bash
+make smoke
+```
+
+The full dry-run process, expected endpoint checks, and pause/kill-switch
+procedure are documented in `docs/production-dry-run-runbook.md`.
+
 ## Notes
 
 Railway's default environment may be named `Production` even while we are still
