@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Mapping
 
-from qualstocks.domain import SourceClass, SourceEvent
+from qualstocks.domain import SourceCategory, SourceClass, SourceEvent, SourceTier
 from qualstocks.ingestion.idempotency import build_idempotency_key
 
 
@@ -26,6 +26,9 @@ class RawAdapterEvent:
     instrument: str
     payload: Mapping[str, object]
     provenance: Mapping[str, object]
+    source_id: str | None = None
+    source_tier: SourceTier | None = None
+    source_category: SourceCategory | None = None
     source_timestamp: datetime | None = None
     first_seen_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     idempotency_key: str | None = None
@@ -127,6 +130,9 @@ def normalize_raw_adapter_event(
         url=url,
         payload=payload,
         instrument=raw_event.instrument,
+        source_id=raw_event.source_id,
+        source_tier=raw_event.source_tier,
+        source_category=raw_event.source_category,
         raw_event_ref=raw_event_ref,
         source_timestamp=raw_event.source_timestamp,
         first_seen_at=raw_event.first_seen_at,

@@ -198,7 +198,7 @@ def _number(value: object) -> float | None:
         return None
     if isinstance(value, Decimal):
         return float(value)
-    if isinstance(value, int | float):
+    if isinstance(value, (int, float)):
         return float(value)
     try:
         return float(str(value))
