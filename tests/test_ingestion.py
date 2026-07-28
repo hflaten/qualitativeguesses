@@ -44,6 +44,8 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(results[0].status, SourceEventStatus.CREATED)
         self.assertIsNotNone(results[0].analysis_job)
         self.assertEqual(len(repository.events_by_key), 1)
+        self.assertEqual(len(repository.ingestion_outcomes), 1)
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.CREATED)
         self.assertEqual(len(queue.jobs), 1)
         self.assertIn("CENTCOM", repository.source_seen_at)
 
@@ -93,6 +95,8 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(result.ingested_event.event.instrument, "EQNR.OL")
         self.assertEqual(result.ingested_event.event.raw_event_ref, "centcom-1")
         self.assertEqual(len(repository.events_by_key), 1)
+        self.assertEqual(len(repository.ingestion_outcomes), 1)
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.CREATED)
         self.assertEqual(len(queue.jobs), 1)
 
     def test_raw_adapter_event_preserves_provided_idempotency_key_for_duplicates(self):
@@ -116,6 +120,11 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(first.ingested_event.idempotency_key, "provider-event:centcom:123")
         self.assertEqual(second.ingested_event.idempotency_key, "provider-event:centcom:123")
         self.assertEqual(len(repository.events_by_key), 1)
+        self.assertEqual(
+            [outcome.status for outcome in repository.ingestion_outcomes],
+            [SourceEventStatus.CREATED, SourceEventStatus.DUPLICATE],
+        )
+        self.assertEqual(repository.ingestion_outcomes[1].event_id, first.ingested_event.event.id)
         self.assertEqual(len(queue.jobs), 1)
 
     def test_duplicate_event_is_not_enqueued_twice(self):
@@ -131,6 +140,7 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(first[0].status, SourceEventStatus.CREATED)
         self.assertEqual(second[0].status, SourceEventStatus.DUPLICATE)
         self.assertEqual(len(repository.events_by_key), 1)
+        self.assertEqual(repository.ingestion_outcomes[-1].status, SourceEventStatus.DUPLICATE)
         self.assertEqual(len(queue.jobs), 1)
 
     def test_source_latency_is_recorded_when_source_timestamp_exists(self):
@@ -193,6 +203,9 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(result.status, SourceEventStatus.MALFORMED)
         self.assertEqual(result.rejection_reason, "title is required")
         self.assertEqual(len(repository.events_by_key), 0)
+        self.assertEqual(len(repository.ingestion_outcomes), 1)
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.MALFORMED)
+        self.assertEqual(repository.ingestion_outcomes[0].rejection_reason, "title is required")
         self.assertEqual(len(queue.jobs), 0)
 
     def test_unsupported_instrument_is_rejected_before_persistence(self):
@@ -212,6 +225,8 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(result.status, SourceEventStatus.UNSUPPORTED)
         self.assertEqual(result.rejection_reason, "instrument is not supported")
         self.assertEqual(len(repository.events_by_key), 0)
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.UNSUPPORTED)
+        self.assertEqual(len(queue.jobs), 0)
 
     def test_late_event_is_rejected_before_persistence(self):
         repository = InMemoryEventRepository()
@@ -234,6 +249,7 @@ class IngestionTest(unittest.TestCase):
 
         self.assertEqual(result.status, SourceEventStatus.LATE)
         self.assertEqual(result.rejection_reason, "source event is too old")
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.LATE)
         self.assertEqual(len(queue.jobs), 0)
 
     def test_raw_adapter_validation_reports_unsupported_and_late_events(self):
@@ -272,6 +288,8 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(result.status, SourceEventStatus.MALFORMED)
         self.assertEqual(result.rejection_reason, "title is required")
         self.assertEqual(len(repository.events_by_key), 0)
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.MALFORMED)
+        self.assertEqual(repository.ingestion_outcomes[0].source, "CENTCOM")
         self.assertEqual(len(queue.jobs), 0)
 
     def test_late_raw_adapter_event_is_rejected_before_persistence(self):
@@ -296,6 +314,9 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(result.status, SourceEventStatus.LATE)
         self.assertEqual(result.rejection_reason, "source event is too old")
         self.assertEqual(len(repository.events_by_key), 0)
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.LATE)
+        self.assertEqual(repository.ingestion_outcomes[0].title, "Old statement")
+        self.assertEqual(len(queue.jobs), 0)
 
     def test_unsupported_raw_adapter_event_is_rejected_before_persistence(self):
         repository = InMemoryEventRepository()
@@ -314,6 +335,8 @@ class IngestionTest(unittest.TestCase):
         self.assertEqual(result.status, SourceEventStatus.UNSUPPORTED)
         self.assertEqual(result.rejection_reason, "instrument is not supported")
         self.assertEqual(len(repository.events_by_key), 0)
+        self.assertEqual(repository.ingestion_outcomes[0].status, SourceEventStatus.UNSUPPORTED)
+        self.assertEqual(len(queue.jobs), 0)
 
 
 if __name__ == "__main__":

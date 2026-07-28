@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Protocol
 
@@ -9,6 +10,7 @@ from qualstocks.domain import SourceEvent
 from qualstocks.ingestion.service import (
     AnalysisJob,
     IngestedEvent,
+    IngestionOutcome,
     IngestionResult,
     SourceEventStatus,
     _source_latency_seconds,
@@ -24,6 +26,9 @@ class DatabaseClient(Protocol):
 
     def upsert_source_health(self, values: dict[str, object]) -> None:
         """Upsert source health metadata."""
+
+    def insert_ingestion_outcome(self, values: dict[str, object]) -> dict[str, object]:
+        """Insert an ingestion outcome for dashboard/audit timeline rendering."""
 
     def insert_analysis_job(self, values: dict[str, object]) -> dict[str, object]:
         """Insert an analysis job and return the inserted row."""
@@ -90,8 +95,12 @@ class PostgresSourceEventRepository:
         if row is None:
             raise RuntimeError("source event insert returned no row and duplicate lookup failed")
 
+        ingested_event = event if status == SourceEventStatus.CREATED else replace(
+            event,
+            id=str(row.get("id") or event.id),
+        )
         ingested = IngestedEvent(
-            event=event,
+            event=ingested_event,
             idempotency_key=idempotency_key,
             persisted_at=_row_datetime(row.get("created_at")),
             source_latency_seconds=_source_latency_seconds(event),
@@ -104,6 +113,9 @@ class PostgresSourceEventRepository:
 
     def record_source_seen(self, event: SourceEvent) -> None:
         self.client.upsert_source_health(_source_health_values(event))
+
+    def record_ingestion_outcome(self, outcome: IngestionOutcome) -> None:
+        self.client.insert_ingestion_outcome(_ingestion_outcome_values(outcome))
 
 
 @dataclass(frozen=True)
@@ -262,6 +274,37 @@ class PsycopgDatabaseClient:
             """,
             values,
         )
+
+    def insert_ingestion_outcome(self, values: dict[str, object]) -> dict[str, object]:
+        row = self._fetchone(
+            """
+            insert into ingestion_outcomes (
+              status,
+              source,
+              source_class,
+              title,
+              idempotency_key,
+              event_id,
+              rejection_reason,
+              recorded_at
+            )
+            values (
+              %(status)s,
+              %(source)s,
+              %(source_class)s,
+              %(title)s,
+              %(idempotency_key)s,
+              %(event_id)s,
+              %(rejection_reason)s,
+              %(recorded_at)s
+            )
+            returning id, recorded_at
+            """,
+            values,
+        )
+        if row is None:
+            raise RuntimeError("ingestion outcome insert returned no row")
+        return row
 
     def insert_analysis_job(self, values: dict[str, object]) -> dict[str, object]:
         row = self._fetchone(
@@ -609,6 +652,50 @@ class PsycopgDatabaseClient:
                 ),
                 '[]'::jsonb
               ) as latest_events,
+              coalesce(
+                (
+                  select jsonb_agg(to_jsonb(o) order by o.recorded_at desc)
+                  from (
+                    select
+                      id,
+                      status,
+                      source,
+                      source_class,
+                      title,
+                      idempotency_key,
+                      event_id,
+                      rejection_reason,
+                      recorded_at as timestamp
+                    from ingestion_outcomes
+                    where status = 'duplicate'
+                    order by recorded_at desc
+                    limit 20
+                  ) o
+                ),
+                '[]'::jsonb
+              ) as duplicate_events,
+              coalesce(
+                (
+                  select jsonb_agg(to_jsonb(o) order by o.recorded_at desc)
+                  from (
+                    select
+                      id,
+                      status,
+                      source,
+                      source_class,
+                      title,
+                      idempotency_key,
+                      event_id,
+                      rejection_reason,
+                      recorded_at as timestamp
+                    from ingestion_outcomes
+                    where status in ('malformed', 'late', 'unsupported')
+                    order by recorded_at desc
+                    limit 20
+                  ) o
+                ),
+                '[]'::jsonb
+              ) as rejected_events,
               (
                 select jsonb_build_object(
                   'queued', count(*) filter (where status = 'queued'),
@@ -657,6 +744,8 @@ class PsycopgDatabaseClient:
             "valuation": None,
             "source_health": [],
             "latest_events": [],
+            "duplicate_events": [],
+            "rejected_events": [],
             "queue_status": None,
             "risk_decisions": [],
             "audit_timeline": [],
@@ -793,6 +882,19 @@ def _source_health_values(event: SourceEvent) -> dict[str, object]:
         "licensing_class": event.licensing_class.value if event.licensing_class else None,
         "language": event.language,
         "translation_required": event.translation_required,
+    }
+
+
+def _ingestion_outcome_values(outcome: IngestionOutcome) -> dict[str, object]:
+    return {
+        "status": outcome.status.value,
+        "source": outcome.source,
+        "source_class": outcome.source_class.value,
+        "title": outcome.title,
+        "idempotency_key": outcome.idempotency_key,
+        "event_id": outcome.event_id,
+        "rejection_reason": outcome.rejection_reason,
+        "recorded_at": outcome.recorded_at,
     }
 
 

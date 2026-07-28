@@ -42,6 +42,18 @@ create table source_events (
   created_at timestamptz not null default now()
 );
 
+create table ingestion_outcomes (
+  id uuid primary key default gen_random_uuid(),
+  status text not null check (status in ('created', 'duplicate', 'malformed', 'late', 'unsupported')),
+  source text not null,
+  source_class source_class not null,
+  title text not null default '',
+  idempotency_key text not null,
+  event_id uuid references source_events(id),
+  rejection_reason text,
+  recorded_at timestamptz not null default now()
+);
+
 create table event_clusters (
   id uuid primary key default gen_random_uuid(),
   canonical_event_id uuid references source_events(id),
@@ -147,7 +159,8 @@ create table audit_log (
 
 create index source_events_first_seen_at_idx on source_events (first_seen_at desc);
 create index source_events_source_idx on source_events (source);
+create index ingestion_outcomes_recorded_at_idx on ingestion_outcomes (recorded_at desc);
+create index ingestion_outcomes_status_idx on ingestion_outcomes (status);
 create index event_classifications_event_id_idx on event_classifications (event_id);
 create index hypotheses_state_idx on hypotheses (state);
 create index audit_log_created_at_idx on audit_log (created_at desc);
-

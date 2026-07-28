@@ -67,6 +67,18 @@ class IngestionResult:
 
 
 @dataclass(frozen=True)
+class IngestionOutcome:
+    status: SourceEventStatus
+    source: str
+    source_class: SourceClass
+    title: str
+    idempotency_key: str
+    recorded_at: datetime
+    event_id: str | None = None
+    rejection_reason: str | None = None
+
+
+@dataclass(frozen=True)
 class IngestionValidationConfig:
     supported_instruments: tuple[str, ...] = ("EQNR.OL",)
     max_source_event_age: timedelta = timedelta(days=7)
@@ -78,6 +90,9 @@ class SourceEventRepository(Protocol):
 
     def record_source_seen(self, event: SourceEvent) -> None:
         """Record source health/latency metadata after a successful ingest attempt."""
+
+    def record_ingestion_outcome(self, outcome: IngestionOutcome) -> None:
+        """Record created, duplicate, or rejected ingestion attempts for audit."""
 
 
 class AnalysisQueue(Protocol):
@@ -99,12 +114,16 @@ class IngestionService:
         validation = validate_raw_adapter_event(raw_event, contract_config)
         if not validation.valid:
             error = validation.errors[0]
-            return IngestionResult(
+            result = IngestionResult(
                 status=_status_from_adapter_error(error.code),
                 ingested_event=None,
                 analysis_job=None,
                 rejection_reason=error.reason,
             )
+            self.repository.record_ingestion_outcome(
+                _raw_outcome(raw_event, result.status, error.reason)
+            )
+            return result
 
         normalized = normalize_raw_adapter_event(raw_event, contract_config)
         return await self._ingest_validated(
@@ -116,12 +135,21 @@ class IngestionService:
         rejection = _source_event_rejection(event, self.validation_config)
         if rejection is not None:
             status, reason = rejection
-            return IngestionResult(
+            result = IngestionResult(
                 status=status,
                 ingested_event=None,
                 analysis_job=None,
                 rejection_reason=reason,
             )
+            self.repository.record_ingestion_outcome(
+                _event_outcome(
+                    event,
+                    status,
+                    idempotency_key=build_idempotency_key(event),
+                    rejection_reason=reason,
+                )
+            )
+            return result
 
         return await self._ingest_validated(
             event,
@@ -135,6 +163,15 @@ class IngestionService:
         idempotency_key: str,
     ) -> IngestionResult:
         result = self.repository.persist_source_event(event, idempotency_key)
+        if result.ingested_event is not None:
+            self.repository.record_ingestion_outcome(
+                _event_outcome(
+                    result.ingested_event.event,
+                    result.status,
+                    idempotency_key=idempotency_key,
+                    rejection_reason=result.rejection_reason,
+                )
+            )
         self.repository.record_source_seen(event)
         if result.created:
             if result.ingested_event is None:
@@ -152,6 +189,7 @@ class IngestionService:
 class InMemoryEventRepository:
     events_by_key: dict[str, IngestedEvent] = field(default_factory=dict)
     source_seen_at: dict[str, datetime] = field(default_factory=dict)
+    ingestion_outcomes: list[IngestionOutcome] = field(default_factory=list)
 
     def persist_source_event(self, event: SourceEvent, idempotency_key: str) -> IngestionResult:
         existing = self.events_by_key.get(idempotency_key)
@@ -177,6 +215,9 @@ class InMemoryEventRepository:
 
     def record_source_seen(self, event: SourceEvent) -> None:
         self.source_seen_at[event.source] = datetime.now(timezone.utc)
+
+    def record_ingestion_outcome(self, outcome: IngestionOutcome) -> None:
+        self.ingestion_outcomes.append(outcome)
 
 
 @dataclass
@@ -226,3 +267,57 @@ def _status_from_adapter_error(code: AdapterEventErrorCode) -> SourceEventStatus
     if code == AdapterEventErrorCode.UNSUPPORTED:
         return SourceEventStatus.UNSUPPORTED
     return SourceEventStatus.MALFORMED
+
+
+def _event_outcome(
+    event: SourceEvent,
+    status: SourceEventStatus,
+    *,
+    idempotency_key: str,
+    rejection_reason: str | None = None,
+) -> IngestionOutcome:
+    return IngestionOutcome(
+        status=status,
+        source=event.source,
+        source_class=event.source_class,
+        title=event.title,
+        idempotency_key=idempotency_key,
+        event_id=event.id,
+        rejection_reason=rejection_reason,
+        recorded_at=datetime.now(timezone.utc),
+    )
+
+
+def _raw_outcome(
+    raw_event: RawAdapterEvent,
+    status: SourceEventStatus,
+    rejection_reason: str,
+) -> IngestionOutcome:
+    return IngestionOutcome(
+        status=status,
+        source=raw_event.source,
+        source_class=raw_event.source_class,
+        title=_raw_title(raw_event),
+        idempotency_key=raw_event.idempotency_key or _raw_event_ref(raw_event),
+        event_id=None,
+        rejection_reason=rejection_reason,
+        recorded_at=datetime.now(timezone.utc),
+    )
+
+
+def _raw_title(raw_event: RawAdapterEvent) -> str:
+    for key in ("title", "headline"):
+        value = raw_event.payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def _raw_event_ref(raw_event: RawAdapterEvent) -> str:
+    value = raw_event.provenance.get("raw_event_ref")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    title = _raw_title(raw_event)
+    if title:
+        return f"{raw_event.source}:{title}"
+    return f"{raw_event.source}:rejected"

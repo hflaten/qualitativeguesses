@@ -18,6 +18,8 @@ The migration covers the required V1 durable records:
 
 - `source_events` persists raw events before AI analysis and has a unique
   `idempotency_key` for dedupe.
+- `ingestion_outcomes` records created, duplicate, malformed, late, and
+  unsupported ingestion attempts for dashboard/audit timeline visibility.
 - `event_clusters` and `event_cluster_members` support later clustering without
   changing the raw event table.
 - `event_classifications` stores model, confidence, direction, reinforcement,
@@ -51,4 +53,3 @@ problem:
 
 Keep the initial schema as-is for QUA-7. It is adequate for the first foundation
 merge and should not block source adapter or dashboard contract work.
-

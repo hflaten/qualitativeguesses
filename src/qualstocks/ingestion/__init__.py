@@ -27,6 +27,7 @@ from qualstocks.ingestion.runtime import IngestionRuntime
 from qualstocks.ingestion.service import (
     AnalysisJob,
     IngestedEvent,
+    IngestionOutcome,
     IngestionResult,
     IngestionService,
     IngestionValidationConfig,
@@ -51,6 +52,7 @@ __all__ = [
     "DatabaseClient",
     "FixtureSourceAdapter",
     "IngestedEvent",
+    "IngestionOutcome",
     "IngestionResult",
     "IngestionRuntime",
     "IngestionService",
