@@ -6,7 +6,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
 from uuid import uuid4
 
-from qualstocks.strategy import PaperOrderIntent, PaperOrderSide
+from qualstocks.strategy.lifecycle import PaperOrderIntent, PaperOrderSide
 
 
 class StrEnum(str, Enum):
